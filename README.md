@@ -4,6 +4,8 @@
 
 Thought Organizer is an innovative AI-powered application designed to help entrepreneurs, innovators, and creative professionals transform raw ideas into structured, actionable insights. By leveraging advanced AI technologies, this tool provides comprehensive analysis and enhancement of your thoughts.
 
+![Thought Organizer UI](src/components/ui/UI_screenshot.png)
+
 ## Features
 
 - **Intelligent Idea Analysis**
