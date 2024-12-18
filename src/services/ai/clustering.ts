@@ -1,10 +1,12 @@
 import OpenAI from 'openai';
 import { Thought, ThoughtCluster } from '../../types/thought';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
+const openai = import.meta.env.VITE_OPENAI_API_KEY 
+  ? new OpenAI({
+      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true,
+    }) 
+  : null;
 
 export async function clusterThoughts(thoughts: Thought[]): Promise<ThoughtCluster[]> {
   if (thoughts.length === 0) return [];

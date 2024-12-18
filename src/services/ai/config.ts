@@ -9,9 +9,9 @@ export interface AIConfig {
 
 export const AI_CONFIGS: Record<AIProvider, AIConfig> = {
   openai: {
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY || undefined,
     baseURL: 'https://api.openai.com/v1',
-    model: 'gpt-3.5-turbo',
+    model: 'gpt-4o',
     isLocal: false
   },
   perplexity: {
