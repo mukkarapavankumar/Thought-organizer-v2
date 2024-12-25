@@ -9,35 +9,40 @@ export interface AIResponse {
 }
 
 export interface ChatMessage {
-  id: string;  // Unique identifier for the message
-  role: 'user' | 'assistant' | 'system';
+  id: string;
+  role: 'user' | 'assistant';
   content: string;
-  timestamp: number;  // Timestamp of the message
+  timestamp: number;
 }
 
 export interface Thought {
   id: string;
   content: string;
+  sectionId: string;
   createdAt: Date;
-  aiAnalysis: AIResponse | null;
-  status: 'idle' | 'loading' | 'error' | 'success';
+  status: 'loading' | 'success' | 'error';
+  aiAnalysis: ThoughtAnalysis | null;
   error?: string;
   ranking: {
     marketImpact: number;
     viability: number;
     totalScore: number;
   };
-  chatHistory?: ChatMessage[];  // Add chat history to the Thought interface
+  chatHistory: ChatMessage[];
+}
+
+export interface ThoughtAnalysis {
+  steps: {
+    stepId: string;
+    content: string;
+  }[];
 }
 
 export interface ThoughtCluster {
   id: string;
+  thoughts: Thought[];
   name: string;
-  thoughts: string[];
-  summary: string;
   ranking: {
-    averageMarketImpact: number;
-    averageViability: number;
     totalScore: number;
   };
 }

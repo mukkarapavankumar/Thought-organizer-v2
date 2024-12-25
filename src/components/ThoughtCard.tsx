@@ -1,96 +1,137 @@
-import { Brain, TrendingUp, AlertCircle, Loader2, Star } from 'lucide-react';
+import React from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { RefreshCw, Edit2, Trash2, MessageSquare } from 'lucide-react';
 import { Thought } from '../types/thought';
 import { useThoughtStore } from '../store/useThoughtStore';
 
 interface ThoughtCardProps {
   thought: Thought;
+  isSelected: boolean;
+  onClick: () => void;
+  onChatOpen?: () => void;
 }
 
-export function ThoughtCard({ thought }: ThoughtCardProps) {
-  const updateUserPriority = useThoughtStore((state) => state.updateUserPriority);
+export function ThoughtCard({ thought, isSelected, onClick, onChatOpen }: ThoughtCardProps) {
+  const { retryAnalysis, editThought, deleteThought } = useThoughtStore();
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editContent, setEditContent] = React.useState(thought.content);
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditContent(thought.content);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (editContent.trim() !== thought.content) {
+      await editThought(thought.id, editContent.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(false);
+    setEditContent(thought.content);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this thought?')) {
+      deleteThought(thought.id);
+    }
+  };
+
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await retryAnalysis(thought.id);
+  };
+
+  const handleChatClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChatOpen?.();
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-      <div className="space-y-2">
-        <div className="flex justify-between items-start">
-          <p className="text-gray-800">{thought.content}</p>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
+    <div
+      onClick={onClick}
+      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+      }`}
+    >
+      {isEditing ? (
+        <form onSubmit={handleSaveEdit} onClick={(e) => e.stopPropagation()}>
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full p-2 border rounded-md mb-2"
+            rows={3}
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p className="text-gray-900">{thought.content}</p>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-gray-500">
+              {formatDistanceToNow(thought.createdAt, { addSuffix: true })}
+            </span>
+            <div className="flex items-center gap-2">
+              {thought.status === 'loading' && (
+                <span className="text-blue-500">Analyzing...</span>
+              )}
+              {thought.status === 'error' && (
+                <span className="text-red-500">Analysis failed</span>
+              )}
               <button
-                key={star}
-                onClick={() => updateUserPriority(thought.id, star)}
-                className={`p-1 hover:text-yellow-500 transition-colors ${
-                  star <= thought.ranking.userPriority ? 'text-yellow-500' : 'text-gray-300'
-                }`}
+                onClick={handleRetry}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Retry analysis"
               >
-                <Star className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4 text-gray-500" />
               </button>
-            ))}
-          </div>
-        </div>
-        <time className="text-sm text-gray-500">
-          {thought.createdAt.toLocaleDateString()}
-        </time>
-      </div>
-
-      {thought.status === 'success' && (
-        <div className="grid grid-cols-3 gap-4 py-2">
-          <div className="text-center">
-            <div className="text-sm font-medium text-gray-500">Market Impact</div>
-            <div className="text-lg font-semibold text-blue-600">
-              {thought.ranking.marketImpact.toFixed(1)}
+              <button
+                onClick={handleEdit}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Edit thought"
+              >
+                <Edit2 className="w-4 h-4 text-gray-500" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                title="Delete thought"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+              <button
+                onClick={handleChatClick}
+                className="p-1 hover:bg-blue-100 rounded-full transition-colors"
+                title="Chat about this thought"
+              >
+                <MessageSquare className="w-4 h-4 text-blue-500" />
+              </button>
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-sm font-medium text-gray-500">Viability</div>
-            <div className="text-lg font-semibold text-green-600">
-              {thought.ranking.viability.toFixed(1)}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm font-medium text-gray-500">Total Score</div>
-            <div className="text-lg font-semibold text-purple-600">
-              {thought.ranking.totalScore.toFixed(1)}
-            </div>
-          </div>
-        </div>
+        </>
       )}
-
-      <div className="space-y-4 pt-4 border-t">
-        {thought.status === 'loading' && (
-          <div className="flex items-center gap-2 text-blue-600">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <p className="text-sm">Analyzing with AI...</p>
-          </div>
-        )}
-
-        {thought.status === 'error' && (
-          <div className="flex items-center gap-2 text-red-600">
-            <AlertCircle className="w-5 h-5" />
-            <p className="text-sm">{thought.error || 'An error occurred'}</p>
-          </div>
-        )}
-
-        {thought.status === 'success' && thought.aiAnalysis && (
-          <>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-blue-600">
-                <Brain className="w-5 h-5" />
-                <h3 className="font-medium">AI Enhancement</h3>
-              </div>
-              <p className="text-gray-700 text-sm">{thought.aiAnalysis.enhancement}</p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-green-600">
-                <TrendingUp className="w-5 h-5" />
-                <h3 className="font-medium">Market Research</h3>
-              </div>
-              <p className="text-gray-700 text-sm">{thought.aiAnalysis.marketResearch}</p>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 }

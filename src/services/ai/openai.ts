@@ -1,277 +1,174 @@
-import OpenAI from 'openai';
-import { AIResponse } from '../../types/thought';
-import { AIProvider, AI_CONFIGS, DEFAULT_PROVIDER } from './config';
-import { generateOllamaCompletion } from './ollama';
-import { chatCompletion as perplexityChatCompletion } from './perplexity';
-import { ChatMessage, ThoughtChatContext } from '../../types/thought';
+import { WorkflowStep } from '../../types/section';
+import { ThoughtAnalysis } from '../../types/thought';
+import { AIProvider } from './config';
+import { checkOllamaHealth, generateOllamaCompletion, listOllamaModels } from './ollama';
 
-let currentProvider: AIProvider = DEFAULT_PROVIDER;
-let openai: OpenAI | null = null;
-
-export function initializeAI(provider: AIProvider = DEFAULT_PROVIDER) {
-  console.log('Initializing AI with provider:', provider); // Debug log
-  
-  // Explicitly set the current provider
-  currentProvider = provider;
-  
-  const config = AI_CONFIGS[provider];
-  
-  // Reset OpenAI client based on provider
-  if (!config.isLocal) {
-    openai = new OpenAI({
-      apiKey: config.apiKey,
-      dangerouslyAllowBrowser: true,
-      baseURL: config.baseURL,
-    });
-  } else {
-    openai = null;  // No OpenAI client needed for local models
-  }
-}
+// Default to Ollama, switch to OpenAI if API key is available
+const hasOpenAIKey = Boolean(import.meta.env.VITE_OPENAI_API_KEY);
+let currentProvider: AIProvider = hasOpenAIKey ? 'openai' : 'ollama';
+let ollamaModel = 'llama3.2:1b';  // Default model
 
 export function getCurrentProvider(): AIProvider {
-  // Ensure we always return a valid provider
-  const validProviders: AIProvider[] = ['openai', 'ollama', 'perplexity'];
-  if (validProviders.includes(currentProvider)) {
-    return currentProvider;
-  }
-  
-  // Fallback to default provider
-  console.warn(`Invalid current provider: ${currentProvider}. Falling back to default.`);
-  return DEFAULT_PROVIDER;
+  return currentProvider;
 }
 
-async function createCompletion(messages: any[], temperature: number = 0.7) {
-  const config = AI_CONFIGS[currentProvider];
-  
-  // Format messages for API
-  const formattedMessages = messages.map(msg => ({
-    role: msg.role,
-    content: msg.content
-  }));
-  
-  if (config.isLocal) {
-    const response = await generateOllamaCompletion(config.model, formattedMessages);
-    return { choices: [{ message: { content: response.content } }] };
-  } else if (currentProvider === 'perplexity') {
-    // Ensure the last message is from the user for Perplexity
-    const lastMessage = formattedMessages[formattedMessages.length - 1];
-    if (lastMessage && lastMessage.role !== 'user') {
-      // If not, add the last non-user message's content as part of the user's query
-      const userQuery = `Given the assistant's response: "${lastMessage.content}", what would you like to know?`;
-      formattedMessages.push({
-        role: 'user',
-        content: userQuery
-      });
-    }
-    
-    const response = await perplexityChatCompletion({
-      model: config.model,
-      messages: formattedMessages,
-      temperature,
-      max_tokens: 1000,
-    });
-    return { choices: [{ message: { content: response } }] };
-  } else if (openai) {
-    return await openai.chat.completions.create({
-      model: config.model,
-      messages: formattedMessages,
-      temperature,
-    });
-  }
-  throw new Error('No AI provider initialized');
+export function setOllamaModel(model: string) {
+  ollamaModel = model;
 }
 
-async function extractJSONFromResponse(responseText: string): Promise<any> {
-  // Try to extract JSON from code blocks or between specific markers
-  const jsonMatches = responseText.match(/```json\n([\s\S]*?)\n```/);
-  if (jsonMatches) {
-    try {
-      return JSON.parse(jsonMatches[1]);
-    } catch {}
+export async function initializeAI(provider: AIProvider) {
+  // Only allow switching to OpenAI if API key is available
+  if (provider === 'openai' && !hasOpenAIKey) {
+    console.warn('OpenAI API key not configured. Defaulting to Ollama.');
+    currentProvider = 'ollama';
+  } else {
+    currentProvider = provider;
   }
 
-  // Try to extract JSON from between { and }
-  const bracketMatches = responseText.match(/\{[\s\S]*\}/);
-  if (bracketMatches) {
-    try {
-      return JSON.parse(bracketMatches[0]);
-    } catch {}
-  }
-
-  // Fallback: try to clean and parse
-  const cleanedText = responseText
-    .replace(/```json/g, '')
-    .replace(/```/g, '')
-    .replace(/\n/g, '')
-    .trim();
-
-  try {
-    return JSON.parse(cleanedText);
-  } catch {
-    // If all parsing fails, return a default structure
-    console.error('Could not parse response:', responseText);
-    return {
-      marketImpact: 5,
-      viability: 5
-    };
-  }
-}
-
-const extractRanking = (content: string): { marketImpact: number, viability: number } => {
-  // Try to extract numbers from the content
-  const marketImpactMatch = content.match(/market\s*impact.*?(\d+)/i);
-  const viabilityMatch = content.match(/viability.*?(\d+)/i);
-
-  const marketImpact = marketImpactMatch 
-    ? Math.max(0, Math.min(10, parseInt(marketImpactMatch[1], 10)))
-    : 5;
-
-  const viability = viabilityMatch
-    ? Math.max(0, Math.min(10, parseInt(viabilityMatch[1], 10)))
-    : 5;
-
-  return { marketImpact, viability };
-};
-
-export async function analyzeThought(content: string): Promise<AIResponse> {
-  try {
-    const [enhancementResponse, marketResearchResponse, businessCaseResponse, rankingResponse] = await Promise.all([
-      createCompletion([
-        {
-          role: 'system',
-          content: 'You are an AI thought enhancer as a part of a thought organizer tool. This tool is used by developers to dump all their new business ideas and AI generates enhancements and business cases. Provide a thoughtful enhancement to the following thought.'
-        },
-        {
-          role: 'user',
-          content
-        }
-      ]),
-      createCompletion([
-        {
-          role: 'system',
-          content: 'You are an AI Market Researcher as a part of a thought organizer tool. This tool is used by developers to dump all their new business ideas and AI generates enhancements and business cases. Provide market research insights for the following thought.'
-        },
-        {
-          role: 'user',
-          content
-        }
-      ]),
-      createCompletion([
-        {
-          role: 'system',
-          content: 'You are an AI Business Case Designer as a part of a thought organizer tool. This tool is used by developers to dump all their new business ideas and AI generates enhancements and business cases. Develop a comprehensive business case for the following thought, including potential revenue streams, target market, competitive landscape, and key value propositions.'
-        },
-        {
-          role: 'user',
-          content
-        }
-      ]),
-      createCompletion([
-        {
-          role: 'system',
-          content: 'Provide market impact and viability scores (0-10). Respond with a description that includes the scores, like: "Market Impact: X/10, Viability: Y/10"'
-        },
-        {
-          role: 'user',
-          content
-        }
-      ])
-    ]);
-
-    const enhancement = enhancementResponse.choices[0].message.content || '';
-    const marketResearch = marketResearchResponse.choices[0].message.content || '';
-    const businessCase = businessCaseResponse.choices[0].message.content || '';
-    const rankingContent = rankingResponse.choices[0].message.content || '';
-    
-    let ranking;
-    try {
-      // First try to parse as JSON
-      ranking = JSON.parse(rankingContent);
-    } catch (jsonError) {
-      // If JSON parsing fails, extract numbers from text
-      ranking = extractRanking(rankingContent);
-    }
-
-    return {
-      enhancement,
-      marketResearch,
-      businessCase,
-      ranking: {
-        marketImpact: Math.max(0, Math.min(10, ranking.marketImpact || 5)),
-        viability: Math.max(0, Math.min(10, ranking.viability || 5))
+  // If using Ollama, check if it's running
+  if (currentProvider === 'ollama') {
+    const isOllamaRunning = await checkOllamaHealth();
+    if (!isOllamaRunning) {
+      console.error('Ollama is not running. Please start the Ollama server.');
+      if (hasOpenAIKey) {
+        console.warn('Falling back to OpenAI...');
+        currentProvider = 'openai';
       }
-    };
+    }
+  }
+}
+
+export async function analyzeThoughtWithWorkflow(
+  content: string,
+  workflow: WorkflowStep[]
+): Promise<ThoughtAnalysis> {
+  const steps = await Promise.all(
+    workflow.map(async (step) => {
+      const prompt = `${step.prompt}\n\n${content}`;
+      try {
+        const response = await generateCompletion(prompt);
+        return {
+          stepId: step.id,
+          content: response,
+        };
+      } catch (error) {
+        console.error(`Error in workflow step "${step.name}":`, error);
+        return {
+          stepId: step.id,
+          content: 'Failed to generate analysis. Please try again.',
+        };
+      }
+    })
+  );
+
+  return { steps };
+}
+
+export async function generateCompletion(prompt: string): Promise<string> {
+  try {
+    switch (currentProvider) {
+      case 'ollama':
+        return await generateOllamaCompletion({
+          model: ollamaModel,
+          prompt,
+          options: {
+            temperature: 0.7,
+          },
+        });
+      case 'openai':
+        return await generateOpenAICompletion(prompt);
+      case 'perplexity':
+        return await generatePerplexityCompletion(prompt);
+      default:
+        throw new Error('Invalid AI provider');
+    }
   } catch (error) {
-    console.error('Error analyzing thought:', error);
-    return {
-      enhancement: '',
-      marketResearch: '',
-      businessCase: '',
-      ranking: { marketImpact: 5, viability: 5 }
-    };
+    console.error(`Error with ${currentProvider}:`, error);
+    
+    if (currentProvider === 'ollama' && hasOpenAIKey) {
+      console.log('Falling back to OpenAI...');
+      try {
+        return await generateOpenAICompletion(prompt);
+      } catch (fallbackError) {
+        console.error('OpenAI fallback failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
+    
+    throw error;
   }
 }
 
-export async function generateChatCompletion(
-  messages: ChatMessage[], 
-  context?: ThoughtChatContext
-): Promise<string> {
-  // Prepare context-aware system message if context is provided
-  const contextMessages: ChatMessage[] = context ? [
-    {
-      role: 'system',
-      content: `You are a helpful AI assistant. Consider the following context for this conversation, but make sure to directly address the user's latest question:
-
-Context:
-Original Thought: ${context.thoughtContent}
-${context.enhancement ? `Enhancement: ${context.enhancement}` : ''}
-${context.marketResearch ? `Market Research: ${context.marketResearch}` : ''}
-${context.businessCase ? `Business Case: ${context.businessCase}` : ''}`,
-      id: `system-context-${Date.now()}`,
-      timestamp: Date.now()
-    }
-  ] : [];
-
-  // Get the latest user message
-  const latestMessage = messages[messages.length - 1];
-  
-  // Combine messages: context + chat history (excluding latest) + latest question
-  const fullMessageChain = [
-    ...contextMessages,
-    ...messages.slice(0, -1).map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
-    {
-      role: latestMessage.role,
-      content: latestMessage.content
-    }
-  ];
+async function generateOpenAICompletion(prompt: string): Promise<string> {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured');
+  }
 
   try {
-    const completion = await createCompletion(fullMessageChain);
-    
-    // More robust type guard for OpenAI response
-    if (completion && typeof completion === 'object') {
-      // Handle OpenAI response format
-      if (completion.choices && Array.isArray(completion.choices) && 
-          completion.choices[0] && 
-          completion.choices[0].message && 
-          completion.choices[0].message.content) {
-        return completion.choices[0].message.content as string;
-      }
-      
-      // Handle Ollama or other formats
-      if ('content' in completion && completion.content) {
-        return completion.content as string;
-      }
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.error?.message || 'Failed to generate completion');
     }
 
-    // Log the unexpected response for debugging
-    console.error('Unexpected completion response:', JSON.stringify(completion));
-    return 'I apologize, but I encountered an unexpected response format.';
+    const data = await response.json();
+    return data.choices[0].message.content;
   } catch (error) {
-    console.error('Error in chat completion:', error);
-    return 'I apologize, but I encountered an error processing your request.';
+    console.error('OpenAI error:', error);
+    throw error;
+  }
+}
+
+async function generatePerplexityCompletion(prompt: string): Promise<string> {
+  const apiKey = import.meta.env.VITE_PERPLEXITY_API_KEY;
+  if (!apiKey) {
+    throw new Error('Perplexity API key is not configured');
+  }
+
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mixtral-8x7b-instruct',
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.error?.message || 'Failed to generate completion');
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Perplexity error:', error);
+    throw error;
   }
 }

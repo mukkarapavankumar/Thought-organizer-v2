@@ -1,23 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Thought, ThoughtCluster, SortOption, ChatMessage } from '../types/thought';
-import { analyzeThought } from '../services/ai/openai';
-import { clusterThoughts } from '../services/ai/clustering';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { Thought, SortOption, ChatMessage } from '../types/thought';
+import { analyzeThoughtWithWorkflow } from '../services/ai/openai';
 import { v4 as uuidv4 } from 'uuid';
+import { useSectionStore } from './useSectionStore';
 
 interface ThoughtStore {
   thoughts: Thought[];
-  clusters: ThoughtCluster[];
   sortBy: SortOption;
-  addThought: (content: string) => Promise<void>;
+  addThought: (content: string, sectionId: string) => Promise<void>;
   deleteThought: (id: string) => void;
   retryAnalysis: (id: string) => Promise<void>;
   editThought: (id: string, newContent: string) => Promise<void>;
-  updateThoughtAnalysis: (id: string, enhancement: string, marketResearch: string, businessCase: string, ranking?: { marketImpact: number, viability: number }) => void;
-  updateClusters: () => Promise<void>;
   setSortBy: (option: SortOption) => void;
   getSortedThoughts: () => Thought[];
-  getSortedClusters: () => ThoughtCluster[];
   analyzeThought: (thoughtId: string) => Promise<void>;
   addChatMessage: (thoughtId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   clearThoughtChatHistory: (thoughtId: string) => void;
@@ -27,13 +23,18 @@ export const useThoughtStore = create<ThoughtStore>()(
   persist(
     (set, get) => ({
       thoughts: [],
-      clusters: [],
       sortBy: 'date',
 
-      addThought: async (content: string) => {
+      addThought: async (content: string, sectionId: string) => {
+        const section = useSectionStore.getState().getSection(sectionId);
+        if (!section) {
+          throw new Error('Section not found');
+        }
+
         const thought: Thought = {
           id: crypto.randomUUID(),
           content,
+          sectionId,
           createdAt: new Date(),
           status: 'loading',
           aiAnalysis: null,
@@ -50,20 +51,7 @@ export const useThoughtStore = create<ThoughtStore>()(
         }));
 
         try {
-          const currentState = get();
-          await fetch('http://localhost:3001/api/thoughts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ thoughts: currentState.thoughts }),
-          });
-        } catch (error) {
-          console.error('Failed to save thoughts:', error);
-        }
-
-        try {
-          const analysis = await analyzeThought(content);
+          const analysis = await analyzeThoughtWithWorkflow(content, section.workflow);
           set((state) => ({
             thoughts: state.thoughts.map((t) =>
               t.id === thought.id
@@ -71,11 +59,6 @@ export const useThoughtStore = create<ThoughtStore>()(
                     ...t,
                     aiAnalysis: analysis,
                     status: 'success',
-                    ranking: {
-                      marketImpact: analysis.ranking.marketImpact,
-                      viability: analysis.ranking.viability,
-                      totalScore: (analysis.ranking.marketImpact + analysis.ranking.viability) / 2,
-                    },
                   }
                 : t
             ),
@@ -126,7 +109,7 @@ export const useThoughtStore = create<ThoughtStore>()(
         return [...thoughts].sort((a, b) => {
           switch (sortBy) {
             case 'date':
-              return b.createdAt.getTime() - a.createdAt.getTime();
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             case 'marketImpact':
               return (b.ranking?.marketImpact || 0) - (a.ranking?.marketImpact || 0);
             case 'viability':
@@ -139,43 +122,14 @@ export const useThoughtStore = create<ThoughtStore>()(
         });
       },
 
-      getSortedClusters: () => {
-        const { clusters } = get();
-        return [...clusters].sort((a, b) => b.ranking.totalScore - a.ranking.totalScore);
-      },
-
-      updateThoughtAnalysis: (id: string, enhancement: string, marketResearch: string, businessCase: string, ranking?: { marketImpact: number, viability: number }) => {
-        set((state) => ({
-          thoughts: state.thoughts.map((thought) =>
-            thought.id === id
-              ? {
-                  ...thought,
-                  aiAnalysis: {
-                    enhancement,
-                    marketResearch,
-                    businessCase,
-                    ranking: ranking || { marketImpact: 5, viability: 5 }
-                  },
-                  ranking: {
-                    marketImpact: ranking?.marketImpact || 5,
-                    viability: ranking?.viability || 5,
-                    totalScore: (ranking?.marketImpact || 5) + (ranking?.viability || 5)
-                  }
-                }
-              : thought
-          ),
-        }));
-      },
-
-      updateClusters: async () => {
-        const { thoughts } = get();
-        const clusters = await clusterThoughts(thoughts);
-        set({ clusters });
-      },
-
       analyzeThought: async (thoughtId: string) => {
         const thought = get().thoughts.find((t) => t.id === thoughtId);
         if (!thought) return;
+
+        const section = useSectionStore.getState().getSection(thought.sectionId);
+        if (!section) {
+          throw new Error('Section not found');
+        }
 
         try {
           set((state) => ({
@@ -184,18 +138,7 @@ export const useThoughtStore = create<ThoughtStore>()(
             ),
           }));
 
-          const aiResponse = await analyzeThought(thought.content);
-
-          get().updateThoughtAnalysis(
-            thoughtId, 
-            aiResponse.enhancement, 
-            aiResponse.marketResearch, 
-            aiResponse.businessCase,
-            {
-              marketImpact: aiResponse.ranking.marketImpact,
-              viability: aiResponse.ranking.viability
-            }
-          );
+          const analysis = await analyzeThoughtWithWorkflow(thought.content, section.workflow);
 
           set((state) => ({
             thoughts: state.thoughts.map((t) =>
@@ -203,11 +146,7 @@ export const useThoughtStore = create<ThoughtStore>()(
                 ? {
                     ...t,
                     status: 'success',
-                    ranking: {
-                      marketImpact: aiResponse.ranking.marketImpact,
-                      viability: aiResponse.ranking.viability,
-                      totalScore: aiResponse.ranking.marketImpact + aiResponse.ranking.viability,
-                    },
+                    aiAnalysis: analysis,
                   }
                 : t
             ),
@@ -249,88 +188,25 @@ export const useThoughtStore = create<ThoughtStore>()(
 
       clearThoughtChatHistory: (thoughtId: string) => {
         set((state) => ({
-          thoughts: state.thoughts.map((thought) => 
-            thought.id === thoughtId 
+          thoughts: state.thoughts.map((thought) =>
+            thought.id === thoughtId
               ? { ...thought, chatHistory: [] }
               : thought
-          )
+          ),
         }));
       },
     }),
     {
-      name: 'thought-store',
-      storage: {
-        getItem: async (name) => {
-          try {
-            const response = await fetch('http://localhost:3001/api/thoughts');
-            const data = await response.json();
-            console.log('Retrieved thoughts:', data); // Debug log
-            
-            // Return a proper StorageValue object
-            return {
-              state: {
-                thoughts: data || [],
-                sortBy: 'date',
-                clusters: [],
-                // Add other default/initial state properties as needed
-              }
-            };
-          } catch (error) {
-            console.error('Error retrieving thoughts:', error);
-            return null; // Return null if fetch fails
+      name: 'thought-storage',
+      storage: createJSONStorage(() => localStorage, {
+        reviver: (key, value) => {
+          // Convert date strings back to Date objects
+          if (key === 'createdAt' && typeof value === 'string') {
+            return new Date(value);
           }
+          return value;
         },
-        setItem: async (name, value) => {
-          try {
-            console.log('Received value for setItem:', value); // Debug log
-            
-            // Safely parse the value
-            let parsedValue;
-            try {
-              // If it's already an object, use it directly
-              parsedValue = typeof value === 'string' 
-                ? JSON.parse(value) 
-                : value;
-            } catch (parseError) {
-              console.error('Failed to parse storage value:', parseError);
-              console.error('Problematic value:', value);
-              return;
-            }
-
-            // Ensure we have a valid state object
-            const state = parsedValue.state || parsedValue;
-            
-            // Validate thoughts
-            if (!state.thoughts || !Array.isArray(state.thoughts)) {
-              console.error('Invalid thoughts data:', state.thoughts);
-              return;
-            }
-
-            await fetch('http://localhost:3001/api/thoughts', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ 
-                thoughts: state.thoughts.map((t: Thought) => ({
-                  ...t,
-                  createdAt: t.createdAt instanceof Date 
-                    ? t.createdAt.toISOString() 
-                    : (typeof t.createdAt === 'string' 
-                      ? t.createdAt 
-                      : new Date(t.createdAt).toISOString())
-                }))
-              }),
-            });
-          } catch (error) {
-            console.error('Failed to save thoughts:', error);
-          }
-        },
-        removeItem: (name) => {
-          // Optional: implement if you want to clear all thoughts
-          return Promise.resolve();
-        }
-      }
+      }),
     }
   )
 );
