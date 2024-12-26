@@ -4,9 +4,14 @@ import { Section } from '../types/section';
 
 // Get the base URL from Vite's import.meta.env
 const BASE_URL = import.meta.env.BASE_URL;
-const API_URL = import.meta.env.DEV 
-  ? 'http://localhost:3001/api'
-  : `${window.location.origin}${BASE_URL}api`;
+const IS_GITHUB_PAGES = BASE_URL.includes('/Thought-organizer-v2');
+
+// In GitHub Pages, we'll use static JSON files instead of an API
+const API_URL = IS_GITHUB_PAGES
+  ? `${BASE_URL}data`  // This will point to the public/data directory
+  : import.meta.env.DEV 
+    ? 'http://localhost:3001/api'
+    : `${window.location.origin}/api`;
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
@@ -24,6 +29,11 @@ export interface StorageService {
 
 export const storage: StorageService = {
   async saveThoughts(sectionId: string, thoughts: Thought[]): Promise<void> {
+    if (IS_GITHUB_PAGES) {
+      console.warn('Saving is not supported in GitHub Pages mode');
+      return;
+    }
+
     if (supabase) {
       try {
         const { error } = await supabase
@@ -39,7 +49,6 @@ export const storage: StorageService = {
           );
         
         if (!error) return;
-        // If there's an error, fall through to local storage
         console.warn('Supabase save failed, falling back to local storage:', error);
       } catch (error) {
         console.warn('Supabase save failed, falling back to local storage:', error);
@@ -66,6 +75,24 @@ export const storage: StorageService = {
   },
 
   async loadThoughts(sectionId: string): Promise<Thought[]> {
+    if (IS_GITHUB_PAGES) {
+      try {
+        const response = await fetch(`${API_URL}/static.json`);
+        if (!response.ok) {
+          throw new Error('Failed to load thoughts');
+        }
+        const data = await response.json();
+        return (data.thoughts[sectionId] || []).map((thought: any) => ({
+          ...thought,
+          createdAt: new Date(thought.createdAt),
+          updatedAt: thought.updatedAt ? new Date(thought.updatedAt) : undefined,
+        }));
+      } catch (error) {
+        console.error('Error loading thoughts:', error);
+        return [];
+      }
+    }
+
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -82,7 +109,6 @@ export const storage: StorageService = {
             updatedAt: thought.updated_at ? new Date(thought.updated_at) : undefined,
           }));
         }
-        // If there's an error or no data, fall through to local storage
         console.warn('Supabase load failed, falling back to local storage:', error);
       } catch (error) {
         console.warn('Supabase load failed, falling back to local storage:', error);
@@ -109,6 +135,11 @@ export const storage: StorageService = {
   },
 
   async saveSections(sections: Section[]): Promise<void> {
+    if (IS_GITHUB_PAGES) {
+      console.warn('Saving is not supported in GitHub Pages mode');
+      return;
+    }
+
     if (supabase) {
       try {
         const { error } = await supabase
@@ -124,7 +155,6 @@ export const storage: StorageService = {
           );
         
         if (!error) return;
-        // If there's an error, fall through to local storage
         console.warn('Supabase save failed, falling back to local storage:', error);
       } catch (error) {
         console.warn('Supabase save failed, falling back to local storage:', error);
@@ -151,6 +181,24 @@ export const storage: StorageService = {
   },
 
   async loadSections(): Promise<Section[]> {
+    if (IS_GITHUB_PAGES) {
+      try {
+        const response = await fetch(`${API_URL}/static.json`);
+        if (!response.ok) {
+          throw new Error('Failed to load sections');
+        }
+        const data = await response.json();
+        return (data.sections || []).map((section: any) => ({
+          ...section,
+          createdAt: new Date(section.createdAt),
+          updatedAt: new Date(section.updatedAt),
+        }));
+      } catch (error) {
+        console.error('Error loading sections:', error);
+        return [];
+      }
+    }
+
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -166,7 +214,6 @@ export const storage: StorageService = {
             updatedAt: new Date(section.updated_at),
           }));
         }
-        // If there's an error or no data, fall through to local storage
         console.warn('Supabase load failed, falling back to local storage:', error);
       } catch (error) {
         console.warn('Supabase load failed, falling back to local storage:', error);
