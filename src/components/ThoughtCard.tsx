@@ -26,7 +26,7 @@ export function ThoughtCard({ thought, isSelected, onClick, onChatOpen }: Though
     e.preventDefault();
     e.stopPropagation();
     if (editContent.trim() !== thought.content) {
-      await editThought(thought.id, editContent.trim());
+      await editThought(thought.id, thought.sectionId, editContent.trim());
     }
     setIsEditing(false);
   };
@@ -40,13 +40,13 @@ export function ThoughtCard({ thought, isSelected, onClick, onChatOpen }: Though
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this thought?')) {
-      deleteThought(thought.id);
+      deleteThought(thought.id, thought.sectionId);
     }
   };
 
   const handleRetry = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await retryAnalysis(thought.id);
+    await retryAnalysis(thought.id, thought.sectionId);
   };
 
   const handleChatClick = (e: React.MouseEvent) => {
@@ -94,7 +94,7 @@ export function ThoughtCard({ thought, isSelected, onClick, onChatOpen }: Though
               {formatDistanceToNow(thought.createdAt, { addSuffix: true })}
             </span>
             <div className="flex items-center gap-2">
-              {thought.status === 'loading' && (
+              {thought.status === 'analyzing' && (
                 <span className="text-blue-500">Analyzing...</span>
               )}
               {thought.status === 'error' && (

@@ -19,7 +19,7 @@ export function ChatPanel({ thought, onClose }: ChatPanelProps) {
     if (!message.trim() || isLoading) return;
 
     // Add user message
-    addChatMessage(thought.id, {
+    addChatMessage(thought.id, thought.sectionId, {
       role: 'user',
       content: message,
     });
@@ -36,7 +36,7 @@ Analysis Steps:
 ${thought.aiAnalysis?.steps.map(step => `${step.stepId}: ${step.content}`).join('\n\n')}
 
 Previous Chat History:
-${thought.chatHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+${thought.chatHistory?.map(msg => `${msg.role}: ${msg.content}`).join('\n') || ''}
 
 User's Question: ${message}
 `;
@@ -44,13 +44,13 @@ User's Question: ${message}
       const response = await generateCompletion(context);
 
       // Add AI response
-      addChatMessage(thought.id, {
+      addChatMessage(thought.id, thought.sectionId, {
         role: 'assistant',
         content: response,
       });
     } catch (error) {
       console.error('Chat error:', error);
-      addChatMessage(thought.id, {
+      addChatMessage(thought.id, thought.sectionId, {
         role: 'assistant',
         content: 'Sorry, I encountered an error processing your request.',
       });
@@ -60,7 +60,7 @@ User's Question: ${message}
   };
 
   return (
-    <div className="fixed right-4 bottom-4 w-[400px] h-[600px] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col">
+    <div className="fixed right-0 top-0 w-[400px] h-screen bg-white shadow-xl border-l border-gray-200 flex flex-col z-50">
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="font-medium">Chat about this thought</h3>
         <button
@@ -72,7 +72,7 @@ User's Question: ${message}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {thought.chatHistory.map((msg) => (
+        {thought.chatHistory?.map((msg) => (
           <div
             key={msg.id}
             className={`p-3 rounded-lg max-w-[80%] ${

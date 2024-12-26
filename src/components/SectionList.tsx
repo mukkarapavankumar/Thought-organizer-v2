@@ -3,95 +3,28 @@ import { Plus, Settings, Trash2, X } from 'lucide-react';
 import { useSectionStore } from '../store/useSectionStore';
 import { WorkflowStep } from '../types/section';
 
-export function SectionList() {
-  const { sections, currentSectionId, setCurrentSection, deleteSection } = useSectionStore();
-  const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-
-  return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Sections</h2>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="p-1 hover:bg-gray-100 rounded-md"
-            title="Add Section"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {sections.map((section) => (
-          <div
-            key={section.id}
-            className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 ${
-              section.id === currentSectionId ? 'bg-blue-50' : ''
-            }`}
-            onClick={() => setCurrentSection(section.id)}
-          >
-            <span className="flex-1 truncate">{section.name}</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // TODO: Open edit modal
-                }}
-                className="p-1 hover:bg-gray-200 rounded-md"
-                title="Edit Section"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm('Are you sure you want to delete this section?')) {
-                    deleteSection(section.id);
-                  }
-                }}
-                className="p-1 hover:bg-gray-200 rounded-md"
-                title="Delete Section"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {isAddModalOpen && (
-        <SectionModal onClose={() => setIsAddModalOpen(false)} />
-      )}
-    </div>
-  );
-}
-
 interface SectionModalProps {
   onClose: () => void;
+  initialData?: {
+    id: string;
+    name: string;
+    workflow: WorkflowStep[];
+  };
 }
 
-function SectionModal({ onClose }: SectionModalProps) {
-  const addSection = useSectionStore((state) => state.addSection);
-  const [name, setName] = React.useState('');
-  const [steps, setSteps] = React.useState<WorkflowStep[]>([
-    {
-      id: crypto.randomUUID(),
-      name: '',
-      prompt: '',
-      order: 0,
-    },
-  ]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (steps.some((step) => !step.name || !step.prompt)) {
-      alert('Please fill in all workflow step fields');
-      return;
-    }
-    addSection(name, steps);
-    onClose();
-  };
+function SectionModal({ onClose, initialData }: SectionModalProps) {
+  const { addSection, editSection } = useSectionStore();
+  const [name, setName] = React.useState(initialData?.name || '');
+  const [steps, setSteps] = React.useState<WorkflowStep[]>(
+    initialData?.workflow || [
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        prompt: '',
+        order: 0,
+      },
+    ]
+  );
 
   const addStep = () => {
     setSteps([
@@ -110,7 +43,12 @@ function SectionModal({ onClose }: SectionModalProps) {
       alert('You must have at least one workflow step');
       return;
     }
-    setSteps(steps.filter((_, i) => i !== index));
+    const newSteps = steps.filter((_, i) => i !== index);
+    // Update order of remaining steps
+    newSteps.forEach((step, i) => {
+      step.order = i;
+    });
+    setSteps(newSteps);
   };
 
   const updateStep = (index: number, field: keyof WorkflowStep, value: string) => {
@@ -121,10 +59,33 @@ function SectionModal({ onClose }: SectionModalProps) {
     );
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (steps.some((step) => !step.name || !step.prompt)) {
+      alert('Please fill in all workflow step fields');
+      return;
+    }
+
+    // Ensure steps are ordered correctly
+    const orderedSteps = steps.map((step, index) => ({
+      ...step,
+      order: index,
+    }));
+
+    if (initialData) {
+      await editSection(initialData.id, name, orderedSteps);
+    } else {
+      await addSection(name, orderedSteps);
+    }
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-[600px] max-h-[80vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">Add New Section</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          {initialData ? 'Edit Section' : 'Add New Section'}
+        </h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Section Name</label>
@@ -213,11 +174,98 @@ function SectionModal({ onClose }: SectionModalProps) {
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Create Section
+              {initialData ? 'Save Changes' : 'Create Section'}
             </button>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+export function SectionList() {
+  const { sections, currentSectionId, setCurrentSection, deleteSection, editSection } = useSectionStore();
+  const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+  const [editingSection, setEditingSection] = React.useState<{
+    id: string;
+    name: string;
+    workflow: WorkflowStep[];
+  } | null>(null);
+
+  const handleSectionClick = (sectionId: string) => {
+    setCurrentSection(sectionId);
+  };
+
+  const handleDeleteSection = async (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this section?')) {
+      await deleteSection(sectionId);
+    }
+  };
+
+  const handleEditSection = (e: React.MouseEvent, section: {
+    id: string;
+    name: string;
+    workflow: WorkflowStep[];
+  }) => {
+    e.stopPropagation();
+    setEditingSection(section);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">Sections</h2>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="p-1 hover:bg-gray-100 rounded-md"
+            title="Add Section"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {sections.map((section) => (
+          <div
+            key={section.id}
+            className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 ${
+              section.id === currentSectionId ? 'bg-blue-50' : ''
+            }`}
+            onClick={() => handleSectionClick(section.id)}
+          >
+            <span className="flex-1 truncate">{section.name}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => handleEditSection(e, section)}
+                className="p-1 hover:bg-gray-200 rounded-md"
+                title="Edit Section"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => handleDeleteSection(e, section.id)}
+                className="p-1 hover:bg-gray-200 rounded-md"
+                title="Delete Section"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(isAddModalOpen || editingSection) && (
+        <SectionModal
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingSection(null);
+          }}
+          initialData={editingSection ?? undefined}
+        />
+      )}
     </div>
   );
 } 

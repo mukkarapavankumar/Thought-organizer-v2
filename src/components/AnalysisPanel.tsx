@@ -17,10 +17,10 @@ export function AnalysisPanel({
   workflow,
 }: AnalysisPanelProps) {
   const [activeStepId, setActiveStepId] = useState<string | null>(
-    workflow[0]?.id ?? null
+    workflow && workflow.length > 0 ? workflow[0].id : null
   );
 
-  const currentStep = workflow.find((step) => step.id === activeStepId);
+  const currentStep = workflow?.find((step) => step.id === activeStepId);
   const currentResponse = aiResponse?.steps.find(
     (step) => step.stepId === activeStepId
   );
@@ -29,6 +29,14 @@ export function AnalysisPanel({
     return (
       <div className="h-full flex items-center justify-center p-8">
         <p className="text-gray-500">Select a thought to view its analysis</p>
+      </div>
+    );
+  }
+
+  if (!workflow || workflow.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center p-8">
+        <p className="text-gray-500">No workflow steps defined for this section</p>
       </div>
     );
   }

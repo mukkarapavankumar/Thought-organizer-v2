@@ -9,6 +9,7 @@ export interface Section {
   id: string;
   name: string;
   workflow: WorkflowStep[];
+  workflowSteps: string[];
   createdAt: Date;
   updatedAt: Date;
 }

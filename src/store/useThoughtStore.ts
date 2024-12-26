@@ -1,212 +1,235 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { Thought, SortOption, ChatMessage } from '../types/thought';
 import { analyzeThoughtWithWorkflow } from '../services/ai/openai';
 import { v4 as uuidv4 } from 'uuid';
 import { useSectionStore } from './useSectionStore';
+import { storage } from '../services/storage';
 
 interface ThoughtStore {
-  thoughts: Thought[];
+  thoughts: Record<string, Thought[]>;
   sortBy: SortOption;
   addThought: (content: string, sectionId: string) => Promise<void>;
-  deleteThought: (id: string) => void;
-  retryAnalysis: (id: string) => Promise<void>;
-  editThought: (id: string, newContent: string) => Promise<void>;
+  deleteThought: (id: string, sectionId: string) => Promise<void>;
+  retryAnalysis: (id: string, sectionId: string) => Promise<void>;
+  editThought: (id: string, sectionId: string, newContent: string) => Promise<void>;
   setSortBy: (option: SortOption) => void;
-  getSortedThoughts: () => Thought[];
-  analyzeThought: (thoughtId: string) => Promise<void>;
-  addChatMessage: (thoughtId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
-  clearThoughtChatHistory: (thoughtId: string) => void;
+  getSortedThoughts: (sectionId: string) => Thought[];
+  analyzeThought: (thoughtId: string, sectionId: string) => Promise<void>;
+  addChatMessage: (thoughtId: string, sectionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<void>;
+  clearThoughtChatHistory: (thoughtId: string, sectionId: string) => Promise<void>;
+  loadThoughts: (sectionId: string) => Promise<void>;
 }
 
-export const useThoughtStore = create<ThoughtStore>()(
-  persist(
-    (set, get) => ({
-      thoughts: [],
-      sortBy: 'date',
+export const useThoughtStore = create<ThoughtStore>()((set, get) => ({
+  thoughts: {},
+  sortBy: 'date',
 
-      addThought: async (content: string, sectionId: string) => {
-        const section = useSectionStore.getState().getSection(sectionId);
-        if (!section) {
-          throw new Error('Section not found');
-        }
-
-        const thought: Thought = {
-          id: crypto.randomUUID(),
-          content,
-          sectionId,
-          createdAt: new Date(),
-          status: 'loading',
-          aiAnalysis: null,
-          ranking: {
-            marketImpact: 0,
-            viability: 0,
-            totalScore: 0,
-          },
-          chatHistory: []
-        };
-
-        set((state) => ({
-          thoughts: [thought, ...state.thoughts],
-        }));
-
-        try {
-          const analysis = await analyzeThoughtWithWorkflow(content, section.workflow);
-          set((state) => ({
-            thoughts: state.thoughts.map((t) =>
-              t.id === thought.id
-                ? {
-                    ...t,
-                    aiAnalysis: analysis,
-                    status: 'success',
-                  }
-                : t
-            ),
-          }));
-        } catch (error) {
-          set((state) => ({
-            thoughts: state.thoughts.map((t) =>
-              t.id === thought.id
-                ? {
-                    ...t,
-                    status: 'error',
-                    error: error instanceof Error ? error.message : 'Failed to analyze thought',
-                  }
-                : t
-            ),
-          }));
-        }
-      },
-
-      retryAnalysis: async (thoughtId: string) => {
-        set((state) => ({
-          thoughts: state.thoughts.map((t) =>
-            t.id === thoughtId ? { ...t, status: 'loading' } : t
-          ),
-        }));
-        get().analyzeThought(thoughtId);
-      },
-
-      editThought: async (thoughtId: string, newContent: string) => {
-        set((state) => ({
-          thoughts: state.thoughts.map((t) =>
-            t.id === thoughtId ? { ...t, content: newContent, status: 'loading' } : t
-          ),
-        }));
-        get().analyzeThought(thoughtId);
-      },
-
-      deleteThought: (thoughtId: string) => {
-        set((state) => ({
-          thoughts: state.thoughts.filter((t) => t.id !== thoughtId),
-        }));
-      },
-
-      setSortBy: (option: SortOption) => set({ sortBy: option }),
-
-      getSortedThoughts: () => {
-        const { thoughts, sortBy } = get();
-        return [...thoughts].sort((a, b) => {
-          switch (sortBy) {
-            case 'date':
-              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            case 'marketImpact':
-              return (b.ranking?.marketImpact || 0) - (a.ranking?.marketImpact || 0);
-            case 'viability':
-              return (b.ranking?.viability || 0) - (a.ranking?.viability || 0);
-            case 'totalScore':
-              return (b.ranking?.totalScore || 0) - (a.ranking?.totalScore || 0);
-            default:
-              return 0;
-          }
-        });
-      },
-
-      analyzeThought: async (thoughtId: string) => {
-        const thought = get().thoughts.find((t) => t.id === thoughtId);
-        if (!thought) return;
-
-        const section = useSectionStore.getState().getSection(thought.sectionId);
-        if (!section) {
-          throw new Error('Section not found');
-        }
-
-        try {
-          set((state) => ({
-            thoughts: state.thoughts.map((t) =>
-              t.id === thoughtId ? { ...t, status: 'loading' } : t
-            ),
-          }));
-
-          const analysis = await analyzeThoughtWithWorkflow(thought.content, section.workflow);
-
-          set((state) => ({
-            thoughts: state.thoughts.map((t) =>
-              t.id === thoughtId
-                ? {
-                    ...t,
-                    status: 'success',
-                    aiAnalysis: analysis,
-                  }
-                : t
-            ),
-          }));
-        } catch (error) {
-          set((state) => ({
-            thoughts: state.thoughts.map((t) =>
-              t.id === thoughtId
-                ? {
-                    ...t,
-                    status: 'error',
-                    error: error instanceof Error ? error.message : 'Unknown error',
-                  }
-                : t
-            ),
-          }));
-        }
-      },
-
-      addChatMessage: (thoughtId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
-        set((state) => ({
-          thoughts: state.thoughts.map((thought) => 
-            thought.id === thoughtId 
-              ? {
-                  ...thought,
-                  chatHistory: [
-                    ...(thought.chatHistory || []),
-                    {
-                      id: uuidv4(),
-                      timestamp: Date.now(),
-                      ...message
-                    }
-                  ]
-                }
-              : thought
-          )
-        }));
-      },
-
-      clearThoughtChatHistory: (thoughtId: string) => {
-        set((state) => ({
-          thoughts: state.thoughts.map((thought) =>
-            thought.id === thoughtId
-              ? { ...thought, chatHistory: [] }
-              : thought
-          ),
-        }));
-      },
-    }),
-    {
-      name: 'thought-storage',
-      storage: createJSONStorage(() => localStorage, {
-        reviver: (key, value) => {
-          // Convert date strings back to Date objects
-          if (key === 'createdAt' && typeof value === 'string') {
-            return new Date(value);
-          }
-          return value;
-        },
-      }),
+  addThought: async (content: string, sectionId: string) => {
+    const section = useSectionStore.getState().getSection(sectionId);
+    if (!section) {
+      throw new Error('Section not found');
     }
-  )
-);
+
+    const thought: Thought = {
+      id: crypto.randomUUID(),
+      content,
+      sectionId,
+      createdAt: new Date(),
+      status: 'pending',
+      aiAnalysis: undefined,
+      ranking: undefined,
+      chatHistory: [],
+    };
+
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: [...(state.thoughts[sectionId] || []), thought],
+      },
+    }));
+
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+
+    try {
+      const analysis = await analyzeThoughtWithWorkflow(content, section.workflow);
+      set((state) => ({
+        thoughts: {
+          ...state.thoughts,
+          [sectionId]: state.thoughts[sectionId].map((t) =>
+            t.id === thought.id
+              ? {
+                  ...t,
+                  aiAnalysis: analysis,
+                  status: 'completed',
+                }
+              : t
+          ),
+        },
+      }));
+      await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    } catch (error) {
+      set((state) => ({
+        thoughts: {
+          ...state.thoughts,
+          [sectionId]: state.thoughts[sectionId].map((t) =>
+            t.id === thought.id
+              ? {
+                  ...t,
+                  status: 'error',
+                }
+              : t
+          ),
+        },
+      }));
+      await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    }
+  },
+
+  retryAnalysis: async (thoughtId: string, sectionId: string) => {
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: state.thoughts[sectionId].map((t) =>
+          t.id === thoughtId ? { ...t, status: 'analyzing' } : t
+        ),
+      },
+    }));
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    await get().analyzeThought(thoughtId, sectionId);
+  },
+
+  editThought: async (id: string, sectionId: string, newContent: string) => {
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: state.thoughts[sectionId].map((t) =>
+          t.id === id ? { ...t, content: newContent, status: 'analyzing' } : t
+        ),
+      },
+    }));
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    await get().analyzeThought(id, sectionId);
+  },
+
+  deleteThought: async (id: string, sectionId: string) => {
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: state.thoughts[sectionId].filter((t) => t.id !== id),
+      },
+    }));
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+  },
+
+  setSortBy: (option: SortOption) => set({ sortBy: option }),
+
+  getSortedThoughts: (sectionId: string) => {
+    const state = get();
+    const sectionThoughts = state.thoughts[sectionId] || [];
+    return [...sectionThoughts].sort((a, b) => {
+      const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    });
+  },
+
+  analyzeThought: async (thoughtId: string, sectionId: string) => {
+    const section = useSectionStore.getState().getSection(sectionId);
+    if (!section) {
+      throw new Error('Section not found');
+    }
+
+    const thought = get().thoughts[sectionId]?.find((t) => t.id === thoughtId);
+    if (!thought) {
+      throw new Error('Thought not found');
+    }
+
+    try {
+      const analysis = await analyzeThoughtWithWorkflow(thought.content, section.workflow);
+      set((state) => ({
+        thoughts: {
+          ...state.thoughts,
+          [sectionId]: state.thoughts[sectionId].map((t) =>
+            t.id === thoughtId
+              ? {
+                  ...t,
+                  aiAnalysis: analysis,
+                  status: 'completed',
+                }
+              : t
+          ),
+        },
+      }));
+      await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    } catch (error) {
+      set((state) => ({
+        thoughts: {
+          ...state.thoughts,
+          [sectionId]: state.thoughts[sectionId].map((t) =>
+            t.id === thoughtId
+              ? {
+                  ...t,
+                  status: 'error',
+                }
+              : t
+          ),
+        },
+      }));
+      await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+    }
+  },
+
+  addChatMessage: async (thoughtId: string, sectionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
+    const chatMessage = {
+      ...message,
+      id: crypto.randomUUID(),
+      timestamp: new Date(),
+    };
+
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: state.thoughts[sectionId].map((t) =>
+          t.id === thoughtId
+            ? {
+                ...t,
+                chatHistory: [...(t.chatHistory || []), chatMessage],
+              }
+            : t
+        ),
+      },
+    }));
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+  },
+
+  clearThoughtChatHistory: async (thoughtId: string, sectionId: string) => {
+    set((state) => ({
+      thoughts: {
+        ...state.thoughts,
+        [sectionId]: state.thoughts[sectionId].map((t) =>
+          t.id === thoughtId
+            ? {
+                ...t,
+                chatHistory: [],
+              }
+            : t
+        ),
+      },
+    }));
+    await storage.saveThoughts(sectionId, get().thoughts[sectionId] || []);
+  },
+
+  loadThoughts: async (sectionId: string) => {
+    try {
+      const thoughts = await storage.loadThoughts(sectionId);
+      set((state) => ({
+        thoughts: {
+          ...state.thoughts,
+          [sectionId]: thoughts,
+        },
+      }));
+    } catch (error) {
+      console.error('Error loading thoughts:', error);
+    }
+  },
+}));

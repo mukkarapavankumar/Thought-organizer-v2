@@ -12,23 +12,19 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: number;
+  timestamp: Date;
 }
 
 export interface Thought {
   id: string;
   content: string;
-  sectionId: string;
   createdAt: Date;
-  status: 'loading' | 'success' | 'error';
-  aiAnalysis: ThoughtAnalysis | null;
-  error?: string;
-  ranking: {
-    marketImpact: number;
-    viability: number;
-    totalScore: number;
-  };
-  chatHistory: ChatMessage[];
+  updatedAt?: Date;
+  sectionId: string;
+  status: 'pending' | 'analyzing' | 'completed' | 'error';
+  aiAnalysis?: ThoughtAnalysis;
+  ranking?: number;
+  chatHistory?: ChatMessage[];
 }
 
 export interface ThoughtAnalysis {

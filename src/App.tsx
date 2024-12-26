@@ -16,14 +16,13 @@ function App() {
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string>('llama2');
   const [selectedThoughtId, setSelectedThoughtId] = useState<string | null>(null);
   
-  const thoughts = useThoughtStore((state) => state.thoughts);
-  const currentSectionId = useSectionStore((state) => state.currentSectionId);
-  const currentSection = useSectionStore((state) => 
-    state.sections.find(s => s.id === state.currentSectionId)
-  );
+  const { loadThoughts, getSortedThoughts } = useThoughtStore();
+  const { currentSectionId, sections } = useSectionStore();
+  const currentSection = sections.find(s => s.id === currentSectionId);
   
-  const filteredThoughts = thoughts.filter(t => t.sectionId === currentSectionId);
-  const selectedThought = thoughts.find(t => t.id === selectedThoughtId);
+  const filteredThoughts = currentSectionId ? getSortedThoughts(currentSectionId) : [];
+  const selectedThought = currentSectionId && selectedThoughtId ? 
+    filteredThoughts.find(t => t.id === selectedThoughtId) : undefined;
 
   useEffect(() => {
     async function initializeProvider() {
@@ -34,6 +33,12 @@ function App() {
     }
     initializeProvider();
   }, [provider]);
+
+  useEffect(() => {
+    if (currentSectionId) {
+      loadThoughts(currentSectionId);
+    }
+  }, [currentSectionId, loadThoughts]);
 
   async function loadOllamaModels() {
     try {
@@ -50,50 +55,44 @@ function App() {
     }
   }
 
-  const handleProviderChange = async (newProvider: AIProvider) => {
-    console.log('Changing provider to:', newProvider);
-    setProvider(newProvider);
-  };
-
-  const handleOllamaModelChange = (model: string) => {
-    console.log('Changing Ollama model to:', model);
-    setSelectedOllamaModel(model);
-    setOllamaModel(model);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-6 h-6 text-blue-600" />
-              <h1 className="text-xl font-semibold text-gray-900">Thought Organizer</h1>
-            </div>
-            <div className="flex items-center gap-4">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-6 h-6 text-blue-600" />
+            <h1 className="text-xl font-semibold text-gray-900">Thought Organizer</h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as AIProvider)}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              {Object.entries(AI_CONFIGS).map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.name}
+                </option>
+              ))}
+            </select>
+
+            {provider === 'ollama' && (
               <select
-                value={provider}
-                onChange={(e) => handleProviderChange(e.target.value as AIProvider)}
-                className="block w-40 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={selectedOllamaModel}
+                onChange={(e) => {
+                  setSelectedOllamaModel(e.target.value);
+                  setOllamaModel(e.target.value);
+                }}
+                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="ollama">Ollama</option>
-                <option value="openai">OpenAI</option>
-                <option value="perplexity">Perplexity</option>
+                {ollamaModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
               </select>
-              {provider === 'ollama' && ollamaModels.length > 0 && (
-                <select
-                  value={selectedOllamaModel}
-                  onChange={(e) => handleOllamaModelChange(e.target.value)}
-                  className="block w-40 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                >
-                  {ollamaModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </header>
