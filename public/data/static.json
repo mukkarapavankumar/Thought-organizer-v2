@@ -1,0 +1,38 @@
+{
+  "sections": [
+    {
+      "id": "default",
+      "name": "Getting Started",
+      "workflow": [
+        {
+          "id": "step1",
+          "name": "Initial Analysis",
+          "prompt": "Analyze this thought and provide insights:",
+          "order": 0
+        }
+      ],
+      "workflowSteps": ["Analyze this thought and provide insights:"],
+      "createdAt": "2024-03-10T00:00:00.000Z",
+      "updatedAt": "2024-03-10T00:00:00.000Z"
+    }
+  ],
+  "thoughts": {
+    "default": [
+      {
+        "id": "welcome",
+        "content": "Welcome to Thought Organizer! This is a demo version running on GitHub Pages. Note that saving is disabled in this mode.",
+        "sectionId": "default",
+        "createdAt": "2024-03-10T00:00:00.000Z",
+        "status": "completed",
+        "aiAnalysis": {
+          "steps": [
+            {
+              "stepId": "step1",
+              "content": "This is a welcome message explaining that you're using the demo version of Thought Organizer on GitHub Pages. In this mode, all data is read-only and loaded from static files."
+            }
+          ]
+        }
+      }
+    ]
+  }
+} 
