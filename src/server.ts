@@ -12,11 +12,14 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const port = 3001;
-const DATA_DIR = join(dirname(__dirname), 'data');
+const DATA_DIR = process.env.NODE_ENV === 'production' 
+  ? join(dirname(__dirname), 'public', 'data')
+  : join(dirname(__dirname), 'data');
 const STORAGE_PREFIX = 'thought-organizer';
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(join(dirname(__dirname), 'dist')));
 
 // Helper functions for local file storage
 async function ensureDataDir() {
@@ -95,6 +98,13 @@ app.get('/api/sections', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to load sections' });
   }
 });
+
+// Serve index.html for all other routes in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(join(dirname(__dirname), 'dist', 'index.html'));
+  });
+}
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

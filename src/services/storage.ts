@@ -2,7 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { Thought } from '../types/thought';
 import { Section } from '../types/section';
 
-const API_URL = 'http://localhost:3001/api';
+// Get the base URL from Vite's import.meta.env
+const BASE_URL = import.meta.env.BASE_URL;
+const API_URL = import.meta.env.DEV 
+  ? 'http://localhost:3001/api'
+  : `${window.location.origin}${BASE_URL}api`;
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
