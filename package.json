@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "tsx server.ts"
+    "server": "tsx watch src/server.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -17,7 +17,7 @@
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
-    "express": "^4.18.2",
+    "express": "^4.21.2",
     "lucide-react": "^0.344.0",
     "openai": "^4.28.0",
     "react": "^18.3.1",
@@ -34,6 +34,8 @@
   "devDependencies": {
     "@eslint/js": "^9.9.1",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
@@ -44,6 +46,7 @@
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2"

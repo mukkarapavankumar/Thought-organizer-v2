@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Thought } from '../types/thought';
 import { Section } from '../types/section';
 
-const STORAGE_PREFIX = 'thought-organizer';
+const API_URL = 'http://localhost:3001/api';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
@@ -42,10 +42,19 @@ export const storage: StorageService = {
       }
     }
 
-    // Local storage fallback
+    // Local API fallback
     try {
-      const key = `${STORAGE_PREFIX}-thoughts-${sectionId}`;
-      localStorage.setItem(key, JSON.stringify(thoughts));
+      const response = await fetch(`${API_URL}/thoughts/${sectionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(thoughts),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save thoughts');
+      }
     } catch (error) {
       console.error('Error saving thoughts:', error);
       throw new Error('Failed to save thoughts');
@@ -76,13 +85,14 @@ export const storage: StorageService = {
       }
     }
 
-    // Local storage fallback
+    // Local API fallback
     try {
-      const key = `${STORAGE_PREFIX}-thoughts-${sectionId}`;
-      const data = localStorage.getItem(key);
-      if (!data) return [];
+      const response = await fetch(`${API_URL}/thoughts/${sectionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load thoughts');
+      }
 
-      const thoughts = JSON.parse(data);
+      const thoughts = await response.json();
       return thoughts.map((thought: any) => ({
         ...thought,
         createdAt: new Date(thought.createdAt),
@@ -117,10 +127,19 @@ export const storage: StorageService = {
       }
     }
 
-    // Local storage fallback
+    // Local API fallback
     try {
-      const key = `${STORAGE_PREFIX}-sections`;
-      localStorage.setItem(key, JSON.stringify(sections));
+      const response = await fetch(`${API_URL}/sections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sections),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save sections');
+      }
     } catch (error) {
       console.error('Error saving sections:', error);
       throw new Error('Failed to save sections');
@@ -150,13 +169,14 @@ export const storage: StorageService = {
       }
     }
 
-    // Local storage fallback
+    // Local API fallback
     try {
-      const key = `${STORAGE_PREFIX}-sections`;
-      const data = localStorage.getItem(key);
-      if (!data) return [];
+      const response = await fetch(`${API_URL}/sections`);
+      if (!response.ok) {
+        throw new Error('Failed to load sections');
+      }
 
-      const sections = JSON.parse(data);
+      const sections = await response.json();
       return sections.map((section: any) => ({
         ...section,
         createdAt: new Date(section.createdAt),
