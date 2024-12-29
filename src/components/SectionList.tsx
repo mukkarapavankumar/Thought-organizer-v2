@@ -2,6 +2,9 @@ import React from 'react';
 import { Plus, Settings, Trash2, X } from 'lucide-react';
 import { useSectionStore } from '../store/useSectionStore';
 import { WorkflowStep } from '../types/section';
+import { listOllamaModels } from '../services/ai/ollama';
+import { AIProvider, AI_CONFIGS } from '../services/ai/config';
+import { getCurrentProvider } from '../services/ai/openai';
 
 interface SectionModalProps {
   onClose: () => void;
@@ -15,16 +18,37 @@ interface SectionModalProps {
 function SectionModal({ onClose, initialData }: SectionModalProps) {
   const { addSection, editSection } = useSectionStore();
   const [name, setName] = React.useState(initialData?.name || '');
+  const [provider, setProvider] = React.useState<AIProvider>(getCurrentProvider());
+  const [ollamaModels, setOllamaModels] = React.useState<string[]>([]);
   const [steps, setSteps] = React.useState<WorkflowStep[]>(
-    initialData?.workflow || [
+    initialData?.workflow?.map(step => ({
+      ...step,
+      contextSteps: step.contextSteps || [],
+    })) || [
       {
         id: crypto.randomUUID(),
         name: '',
         prompt: '',
         order: 0,
+        contextSteps: [],
       },
     ]
   );
+
+  React.useEffect(() => {
+    async function loadOllamaModels() {
+      try {
+        const models = await listOllamaModels();
+        console.log('Available Ollama models:', models);
+        setOllamaModels(models);
+      } catch (error) {
+        console.error('Failed to load Ollama models:', error);
+      }
+    }
+    if (provider === 'ollama') {
+      loadOllamaModels();
+    }
+  }, [provider]);
 
   const addStep = () => {
     setSteps([
@@ -34,6 +58,7 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
         name: '',
         prompt: '',
         order: steps.length,
+        contextSteps: [],
       },
     ]);
   };
@@ -44,19 +69,33 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
       return;
     }
     const newSteps = steps.filter((_, i) => i !== index);
-    // Update order of remaining steps
+    // Update order of remaining steps and ensure contextSteps are valid
     newSteps.forEach((step, i) => {
       step.order = i;
+      // Remove any contextSteps that reference removed steps
+      step.contextSteps = step.contextSteps.filter(id => 
+        newSteps.some(s => s.id === id)
+      );
     });
     setSteps(newSteps);
   };
 
-  const updateStep = (index: number, field: keyof WorkflowStep, value: string) => {
+  const updateStep = (index: number, field: keyof WorkflowStep, value: any) => {
     setSteps(
       steps.map((step, i) =>
         i === index ? { ...step, [field]: value } : step
       )
     );
+  };
+
+  const toggleContextStep = (stepIndex: number, contextStepId: string) => {
+    const step = steps[stepIndex];
+    const contextSteps = step.contextSteps || [];
+    const newContextSteps = contextSteps.includes(contextStepId)
+      ? contextSteps.filter(id => id !== contextStepId)
+      : [...contextSteps, contextStepId];
+    
+    updateStep(stepIndex, 'contextSteps', newContextSteps);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +117,43 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
       await addSection(name, orderedSteps);
     }
     onClose();
+  };
+
+  const renderModelOptions = () => {
+    const options = [];
+
+    // Add default option
+    options.push(
+      <option key="default" value="">Use Default Model</option>
+    );
+
+    // Add OpenAI models
+    options.push(
+      <optgroup key="openai" label="OpenAI">
+        <option value="openai:gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        <option value="openai:gpt-4">GPT-4</option>
+      </optgroup>
+    );
+
+    // Add Perplexity models
+    options.push(
+      <optgroup key="perplexity" label="Perplexity">
+        <option value="perplexity:llama-3.1-sonar-small-128k-online">llama-3.1-sonar-small-128k-online</option>
+      </optgroup>
+    );
+
+    // Add Ollama models if available
+    if (ollamaModels.length > 0) {
+      options.push(
+        <optgroup key="ollama" label="Ollama">
+          {ollamaModels.map((model) => (
+            <option key={model} value={`ollama:${model}`}>{model}</option>
+          ))}
+        </optgroup>
+      );
+    }
+
+    return options;
   };
 
   return (
@@ -156,6 +232,49 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
                         required
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Model Override (Optional)
+                      </label>
+                      <select
+                        value={step.model || ''}
+                        onChange={(e) =>
+                          updateStep(index, 'model', e.target.value || undefined)
+                        }
+                        className="w-full p-2 border rounded-md"
+                      >
+                        {renderModelOptions()}
+                      </select>
+                    </div>
+
+                    {index > 0 && (
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">
+                          Include Context from Previous Steps
+                        </label>
+                        <div className="space-y-2">
+                          {steps.slice(0, index).map((prevStep) => (
+                            <label
+                              key={prevStep.id}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={step.contextSteps.includes(prevStep.id)}
+                                onChange={() =>
+                                  toggleContextStep(index, prevStep.id)
+                                }
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">
+                                {prevStep.name}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

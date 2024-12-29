@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { useThoughtStore } from '../store/useThoughtStore';
 import { WorkflowStep } from '../types/section';
 import { ThoughtAnalysis } from '../types/thought';
+import ReactMarkdown from 'react-markdown';
 
 interface AnalysisPanelProps {
   thoughtId: string;
   thoughtContent: string;
   aiResponse: ThoughtAnalysis | null;
   workflow: WorkflowStep[];
+}
+
+interface CodeProps {
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 export function AnalysisPanel({
@@ -77,8 +84,34 @@ export function AnalysisPanel({
                 <h3 className="font-medium text-gray-700 mb-2">
                   {currentStep.name}
                 </h3>
-                <div className="prose max-w-none">
-                  {currentResponse.content}
+                <div className="prose prose-md max-w-none dark:prose-invert">
+                  <ReactMarkdown
+                    components={{
+                      pre: ({ ...props }) => (
+                        <pre className="bg-gray-700 p-4 rounded-lg overflow-auto" {...props} />
+                      ),
+                      code: ({ inline, className, ...props }: CodeProps) =>
+                        inline ? (
+                          <code className="bg-gray-100 px-1 py-0.5 rounded" {...props} />
+                        ) : (
+                          <code {...props} />
+                        ),
+                      blockquote: ({ node, ...props }) => (
+                        <blockquote className="border-l-4 border-gray-200 pl-4 italic" {...props} />
+                      ),
+                      a: ({ node, ...props }) => (
+                        <a className="text-blue-600 hover:underline" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="list-disc list-inside" {...props} />
+                      ),
+                      ol: ({ node, ...props }) => (
+                        <ol className="list-decimal list-inside" {...props} />
+                      ),
+                    }}
+                  >
+                    {currentResponse.content}
+                  </ReactMarkdown>
                 </div>
               </div>
             ) : (

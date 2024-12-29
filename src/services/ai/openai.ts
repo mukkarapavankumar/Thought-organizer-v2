@@ -42,30 +42,70 @@ export async function analyzeThoughtWithWorkflow(
   content: string,
   workflow: WorkflowStep[]
 ): Promise<ThoughtAnalysis> {
-  const steps = await Promise.all(
-    workflow.map(async (step) => {
-      const prompt = `${step.prompt}\n\n${content}`;
-      try {
-        const response = await generateCompletion(prompt);
-        return {
-          stepId: step.id,
-          content: response,
-        };
-      } catch (error) {
-        console.error(`Error in workflow step "${step.name}":`, error);
-        return {
-          stepId: step.id,
-          content: 'Failed to generate analysis. Please try again.',
-        };
-      }
-    })
-  );
+  const stepResults = new Map<string, string>();
+  const steps = [];
+
+  for (const step of workflow) {
+    // Build context from previous steps if needed
+    let contextText = '';
+    if (step.contextSteps.length > 0) {
+      contextText = step.contextSteps
+        .map(stepId => {
+          const prevStep = workflow.find(s => s.id === stepId);
+          const prevResult = stepResults.get(stepId);
+          if (prevStep && prevResult) {
+            return `${prevStep.name}:\n${prevResult}\n\n`;
+          }
+          return '';
+        })
+        .join('');
+    }
+
+    const prompt = contextText
+      ? `${contextText}\nBased on the above context:\n${step.prompt}\n\n${content}`
+      : `${step.prompt}\n\n${content}`;
+
+    try {
+      const response = await generateCompletion(prompt, step.model);
+      stepResults.set(step.id, response);
+      steps.push({
+        stepId: step.id,
+        content: response,
+      });
+    } catch (error) {
+      console.error(`Error in workflow step "${step.name}":`, error);
+      steps.push({
+        stepId: step.id,
+        content: 'Failed to generate analysis. Please try again.',
+      });
+    }
+  }
 
   return { steps };
 }
 
-export async function generateCompletion(prompt: string): Promise<string> {
+export async function generateCompletion(prompt: string, modelOverride?: string): Promise<string> {
   try {
+    // If modelOverride has a provider prefix (e.g., "openai:gpt-4"), use that provider
+    if (modelOverride) {
+      const [provider, model] = modelOverride.split(':');
+      switch (provider) {
+        case 'openai':
+          return await generateOpenAICompletion(prompt, model);
+        case 'perplexity':
+          return await generatePerplexityCompletion(prompt, model);
+        case 'ollama':
+          return await generateOllamaCompletion({
+            model,
+            prompt,
+            options: {
+              temperature: 0.7,
+            },
+          });
+      }
+    }
+
+    // If no override or no provider prefix, use the current provider
     switch (currentProvider) {
       case 'ollama':
         return await generateOllamaCompletion({
@@ -99,7 +139,7 @@ export async function generateCompletion(prompt: string): Promise<string> {
   }
 }
 
-async function generateOpenAICompletion(prompt: string): Promise<string> {
+async function generateOpenAICompletion(prompt: string, modelOverride?: string): Promise<string> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OpenAI API key is not configured');
@@ -113,7 +153,7 @@ async function generateOpenAICompletion(prompt: string): Promise<string> {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: modelOverride || 'gpt-3.5-turbo',
         messages: [
           {
             role: 'user',
@@ -136,7 +176,7 @@ async function generateOpenAICompletion(prompt: string): Promise<string> {
   }
 }
 
-async function generatePerplexityCompletion(prompt: string): Promise<string> {
+async function generatePerplexityCompletion(prompt: string, modelOverride?: string): Promise<string> {
   const apiKey = import.meta.env.VITE_PERPLEXITY_API_KEY;
   if (!apiKey) {
     throw new Error('Perplexity API key is not configured');
@@ -150,7 +190,7 @@ async function generatePerplexityCompletion(prompt: string): Promise<string> {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'mixtral-8x7b-instruct',
+        model: modelOverride || 'mixtral-8x7b-instruct',
         messages: [
           {
             role: 'user',

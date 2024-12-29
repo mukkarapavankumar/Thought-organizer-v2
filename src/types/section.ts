@@ -3,6 +3,8 @@ export interface WorkflowStep {
   name: string;
   prompt: string;
   order: number;
+  contextSteps: string[];
+  model?: string;
 }
 
 export interface Section {
@@ -50,19 +52,22 @@ export const DEFAULT_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         id: 'step1',
         name: 'Thought Enhancement',
         prompt: 'Enhance and expand upon this thought:',
-        order: 0
+        order: 0,
+        contextSteps: [],
       },
       {
         id: 'step2',
         name: 'Market Analysis',
         prompt: 'Provide a market analysis for this concept:',
-        order: 1
+        order: 1,
+        contextSteps: ['step1'],
       },
       {
         id: 'step3',
         name: 'Business Case',
         prompt: 'Develop a business case for this idea:',
-        order: 2
+        order: 2,
+        contextSteps: ['step1', 'step2'],
       }
     ]
   },
@@ -75,7 +80,8 @@ export const DEFAULT_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         id: 'step1',
         name: 'Story Generation',
         prompt: 'Create a short story based on this thought:',
-        order: 0
+        order: 0,
+        contextSteps: [],
       }
     ]
   }

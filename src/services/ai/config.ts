@@ -21,7 +21,7 @@ export const AI_CONFIGS: Record<AIProvider, AIConfig> = {
   perplexity: {
     name: 'Perplexity',
     apiKey: import.meta.env.VITE_PERPLEXITY_API_KEY,
-    model: 'mistral-7b-instruct',
+    model: 'llama-3.1-sonar-small-128k-online',
   },
 };
 
