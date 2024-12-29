@@ -3,6 +3,8 @@ import { useThoughtStore } from '../store/useThoughtStore';
 import { WorkflowStep } from '../types/section';
 import { ThoughtAnalysis } from '../types/thought';
 import ReactMarkdown from 'react-markdown';
+import { CopyOutlined, SnippetsOutlined } from '@ant-design/icons';
+import { message } from 'antd';
 
 interface AnalysisPanelProps {
   thoughtId: string;
@@ -32,6 +34,20 @@ export function AnalysisPanel({
     (step) => step.stepId === activeStepId
   );
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success('Copied to clipboard');
+    } catch (err) {
+      message.error('Failed to copy');
+    }
+  };
+
+  const extractCode = (markdown: string): string => {
+    const codeBlocks = markdown.match(/```[\s\S]*?```/g) || [];
+    return codeBlocks.map(block => block.replace(/```[\w]*\n?|\n?```/g, '')).join('\n\n');
+  };
+
   if (!thoughtId) {
     return (
       <div className="h-full flex items-center justify-center p-8">
@@ -49,8 +65,8 @@ export function AnalysisPanel({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+    <div className="h-full flex flex-col flex-1 min-w-[800px] max-w-[1200px]">
+      <div className="p-4 border-b bg-white">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Analysis</h2>
         </div>
@@ -71,42 +87,62 @@ export function AnalysisPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-6">
         {currentStep && (
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-700 mb-2">Original Thought</h3>
+          <div className="space-y-6 max-w-[1000px] mx-auto">
+            <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
+              <h3 className="font-medium text-gray-700 mb-3">Original Thought</h3>
               <p className="text-gray-600">{thoughtContent}</p>
             </div>
 
             {currentResponse ? (
-              <div className="bg-white p-4 rounded-lg border">
-                <h3 className="font-medium text-gray-700 mb-2">
-                  {currentStep.name}
-                </h3>
-                <div className="prose prose-md max-w-none dark:prose-invert">
+              <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium text-gray-700">
+                    {currentStep.name}
+                  </h3>
+                  <div className="flex gap-2">
+                    {currentResponse.content.includes('```') && (
+                      <button
+                        onClick={() => copyToClipboard(extractCode(currentResponse.content))}
+                        className="p-2 hover:bg-gray-100 rounded-md text-gray-600 hover:text-gray-900"
+                        title="Copy code blocks"
+                      >
+                        <SnippetsOutlined />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => copyToClipboard(currentResponse.content)}
+                      className="p-2 hover:bg-gray-100 rounded-md text-gray-600 hover:text-gray-900"
+                      title="Copy full content"
+                    >
+                      <CopyOutlined />
+                    </button>
+                  </div>
+                </div>
+                <div className="prose prose-lg max-w-none dark:prose-invert">
                   <ReactMarkdown
                     components={{
                       pre: ({ ...props }) => (
-                        <pre className="bg-gray-700 p-4 rounded-lg overflow-auto" {...props} />
+                        <pre className="bg-gray-800 p-6 rounded-lg overflow-auto text-gray-100 my-4" {...props} />
                       ),
                       code: ({ inline, className, ...props }: CodeProps) =>
                         inline ? (
-                          <code className="bg-gray-100 px-1 py-0.5 rounded" {...props} />
+                          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800" {...props} />
                         ) : (
-                          <code {...props} />
+                          <code className="text-gray-400" {...props} />
                         ),
-                      blockquote: ({ node, ...props }) => (
-                        <blockquote className="border-l-4 border-gray-200 pl-4 italic" {...props} />
+                      blockquote: ({ ...props }) => (
+                        <blockquote className="border-l-4 border-gray-200 pl-4 italic my-4" {...props} />
                       ),
-                      a: ({ node, ...props }) => (
+                      a: ({ ...props }) => (
                         <a className="text-blue-600 hover:underline" {...props} />
                       ),
-                      ul: ({ node, ...props }) => (
-                        <ul className="list-disc list-inside" {...props} />
+                      ul: ({ ...props }) => (
+                        <ul className="list-disc list-inside my-4 space-y-2" {...props} />
                       ),
-                      ol: ({ node, ...props }) => (
-                        <ol className="list-decimal list-inside" {...props} />
+                      ol: ({ ...props }) => (
+                        <ol className="list-decimal list-inside my-4 space-y-2" {...props} />
                       ),
                     }}
                   >

@@ -9,13 +9,16 @@ import { initializeAI, getCurrentProvider, setOllamaModel } from './services/ai/
 import { listOllamaModels } from './services/ai/ollama';
 import { useThoughtStore } from './store/useThoughtStore';
 import { useSectionStore } from './store/useSectionStore';
+import { Select, Input, Button } from 'antd';
+import { BulbOutlined } from '@ant-design/icons';
 
 function App() {
   const [provider, setProvider] = useState<AIProvider>(getCurrentProvider());
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [selectedOllamaModel, setSelectedOllamaModel] = useState<string>('llama2');
   const [selectedThoughtId, setSelectedThoughtId] = useState<string | null>(null);
-  
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
   const { loadThoughts, getSortedThoughts } = useThoughtStore();
   const { currentSectionId, sections } = useSectionStore();
   const currentSection = sections.find(s => s.id === currentSectionId);
@@ -42,6 +45,7 @@ function App() {
 
   async function loadOllamaModels() {
     try {
+      setIsLoadingModels(true);
       const models = await listOllamaModels();
       console.log('Available Ollama models:', models);
       setOllamaModels(models);
@@ -52,95 +56,82 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to load Ollama models:', error);
+    } finally {
+      setIsLoadingModels(false);
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="flex h-screen flex-col">
+        <header className="flex items-center justify-between border-b bg-white px-6 py-3">
           <div className="flex items-center gap-2">
-            <Lightbulb className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-semibold text-gray-900">Thought Organizer</h1>
+            <BulbOutlined className="text-blue-500" />
+            <h1 className="text-xl font-semibold">Thought Organizer</h1>
           </div>
-
           <div className="flex items-center gap-4">
-            <select
+            <Select
               value={provider}
-              onChange={(e) => setProvider(e.target.value as AIProvider)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              onChange={setProvider}
+              className="w-[120px]"
             >
               {Object.entries(AI_CONFIGS).map(([key, config]) => (
-                <option key={key} value={key}>
+                <Select.Option key={key} value={key}>
                   {config.name}
-                </option>
+                </Select.Option>
               ))}
-            </select>
-
-            {provider === 'ollama' && (
-              <select
-                value={selectedOllamaModel}
-                onChange={(e) => {
-                  setSelectedOllamaModel(e.target.value);
-                  setOllamaModel(e.target.value);
-                }}
-                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                {ollamaModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            )}
+            </Select>
+            <Select
+              value={selectedOllamaModel}
+              onChange={(value) => {
+                setSelectedOllamaModel(value);
+                setOllamaModel(value);
+              }}
+              className="w-[150px]"
+              loading={isLoadingModels}
+            >
+              {ollamaModels.map((model) => (
+                <Select.Option key={model} value={model}>
+                  {model}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-[250px_1fr] gap-6">
-          <div className="bg-white rounded-lg shadow">
+        <div className="flex flex-1 overflow-hidden">
+          <div className="w-[300px] border-r bg-gray-50">
             <SectionList />
           </div>
-          
-          <div className="space-y-6">
-            {currentSection ? (
-              <>
+
+          <div className="flex flex-1 overflow-hidden">
+            <div className="w-1/3 overflow-y-auto bg-gray-50">
+              <div className="p-6">
                 <div className="mb-6">
-                  <ThoughtInput sectionId={currentSection.id} />
+                  <ThoughtInput sectionId={currentSectionId || ''} />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg shadow overflow-y-auto max-h-[calc(100vh-200px)]">
-                    <ThoughtList
-                      thoughts={filteredThoughts}
-                      onSelectThought={setSelectedThoughtId}
-                      selectedThoughtId={selectedThoughtId}
-                    />
-                  </div>
-                  <div className="bg-white rounded-lg shadow overflow-y-auto max-h-[calc(100vh-200px)]">
-                    <AnalysisPanel
-                      aiResponse={selectedThought?.aiAnalysis ?? null}
-                      thoughtContent={selectedThought?.content ?? ''}
-                      thoughtId={selectedThoughtId ?? ''}
-                      workflow={currentSection.workflow}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-[calc(100vh-200px)] bg-white rounded-lg shadow">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium text-gray-900">No Section Selected</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Please select or create a section to start organizing your thoughts.
-                  </p>
+
+                <div className="space-y-4">
+                  <ThoughtList
+                    thoughts={filteredThoughts}
+                    onSelectThought={setSelectedThoughtId}
+                    selectedThoughtId={selectedThoughtId}
+                  />
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="w-2/3 overflow-y-auto bg-white">
+              <AnalysisPanel
+                thoughtId={selectedThoughtId || ''}
+                thoughtContent={selectedThought?.content || ''}
+                aiResponse={selectedThought?.aiAnalysis || null}
+                workflow={currentSection?.workflow || []}
+              />
+            </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

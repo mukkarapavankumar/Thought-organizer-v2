@@ -11,8 +11,10 @@
     "server": "tsx watch src/server.ts"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.5.2",
     "@supabase/supabase-js": "^2.39.0",
     "@types/uuid": "^10.0.0",
+    "antd": "^5.22.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
