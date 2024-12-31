@@ -50,7 +50,7 @@ export function AnalysisPanel({
 
   if (!thoughtId) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
+      <div className="h-full flex items-center justify-center p-6">
         <p className="text-gray-500">Select a thought to view its analysis</p>
       </div>
     );
@@ -65,7 +65,7 @@ export function AnalysisPanel({
   }
 
   return (
-    <div className="h-full flex flex-col flex-1 min-w-[800px] max-w-[1200px]">
+    <div className="h-full flex flex-col flex-1 min-w-[800px] max-w-[1100px]">
       <div className="p-4 border-b bg-white">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Analysis</h2>
@@ -87,14 +87,9 @@ export function AnalysisPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4">
         {currentStep && (
-          <div className="space-y-6 max-w-[1000px] mx-auto">
-            <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-              <h3 className="font-medium text-gray-700 mb-3">Original Thought</h3>
-              <p className="text-gray-600">{thoughtContent}</p>
-            </div>
-
+          <div className="space-y-6 max-w-[1100px] mx-auto">
             {currentResponse ? (
               <div className="bg-white p-6 rounded-lg border shadow-sm">
                 <div className="flex justify-between items-center mb-4">
