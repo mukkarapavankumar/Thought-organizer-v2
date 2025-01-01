@@ -1,14 +1,58 @@
 {
   "name": "thought-organizer",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "tsx watch src/server.ts"
+    "server": "tsx watch src/server.ts",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && electron-builder --win",
+    "electron:preview": "npm run build && electron ."
+  },
+  "build": {
+    "appId": "com.thoughtorganizer.app",
+    "productName": "Thought Organizer",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "npmRebuild": false,
+    "buildDependenciesFromSource": true
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
@@ -19,6 +63,7 @@
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "electron-squirrel-startup": "^1.0.1",
     "express": "^4.21.2",
     "lucide-react": "^0.344.0",
     "openai": "^4.28.0",
@@ -42,6 +87,8 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",

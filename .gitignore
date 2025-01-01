@@ -26,6 +26,11 @@ dist-ssr
 *.sln
 *.sw?
 
+#build
+release
+build_log.txt
+build.cmd
+
 # Keep data directory for GitHub Pages
 !public/data/
 !public/data/static.json

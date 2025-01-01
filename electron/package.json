@@ -1,0 +1,9 @@
+{
+  "name": "thought-organizer-electron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0"
+  }
+} 

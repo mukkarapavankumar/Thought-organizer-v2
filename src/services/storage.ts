@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import { Thought } from '../types/thought';
 import { Section } from '../types/section';
+import fs from 'fs';
+import path from 'path';
 
 // Get the base URL from Vite's import.meta.env
 const BASE_URL = import.meta.env.BASE_URL;
 const IS_GITHUB_PAGES = BASE_URL.includes('/Thought-organizer-v2');
 
-// In GitHub Pages, we'll use static JSON files instead of an API
-const API_URL = IS_GITHUB_PAGES
-  ? `${BASE_URL}data`  // This will point to the public/data directory
+// Get the base URL for API calls
+const API_URL = window.electron 
+  ? 'http://localhost:3001/api'  // Always use local server in Electron app
   : import.meta.env.DEV 
     ? 'http://localhost:3001/api'
     : `${window.location.origin}/api`;
@@ -20,6 +22,45 @@ const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+// Get the data directory path
+async function getDataPath() {
+  if (window.electron) {
+    return await window.electron.getUserDataPath();
+  }
+  return 'data'; // Fallback to local 'data' directory for web
+}
+
+// Helper function to ensure data directory exists
+async function ensureDataDir() {
+  const dataPath = await getDataPath();
+  if (!fs.existsSync(dataPath)) {
+    await fs.promises.mkdir(dataPath, { recursive: true });
+  }
+  return dataPath;
+}
+
+// Helper function to write JSON file
+async function writeJsonFile(filename: string, data: any) {
+  const dataPath = await ensureDataDir();
+  const filePath = path.join(dataPath, filename);
+  await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
+// Helper function to read JSON file
+async function readJsonFile(filename: string) {
+  const dataPath = await ensureDataDir();
+  const filePath = path.join(dataPath, filename);
+  try {
+    const data = await fs.promises.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export interface StorageService {
   saveThoughts: (sectionId: string, thoughts: Thought[]) => Promise<void>;
   loadThoughts: (sectionId: string) => Promise<Thought[]>;
@@ -28,211 +69,50 @@ export interface StorageService {
 }
 
 export const storage: StorageService = {
-  async saveThoughts(sectionId: string, thoughts: Thought[]): Promise<void> {
-    if (IS_GITHUB_PAGES) {
-      console.warn('Saving is not supported in GitHub Pages mode');
-      return;
-    }
-
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from('thoughts')
-          .upsert(
-            thoughts.map(thought => ({
-              ...thought,
-              section_id: sectionId,
-              created_at: thought.createdAt,
-              updated_at: thought.updatedAt,
-            })),
-            { onConflict: 'id' }
-          );
-        
-        if (!error) return;
-        console.warn('Supabase save failed, falling back to local storage:', error);
-      } catch (error) {
-        console.warn('Supabase save failed, falling back to local storage:', error);
-      }
-    }
-
-    // Local API fallback
+  async saveThoughts(sectionId: string, thoughts: Thought[]) {
     try {
       const response = await fetch(`${API_URL}/thoughts/${sectionId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(thoughts),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save thoughts');
-      }
+      if (!response.ok) throw new Error('Failed to save thoughts');
     } catch (error) {
       console.error('Error saving thoughts:', error);
-      throw new Error('Failed to save thoughts');
+      throw error;
     }
   },
 
   async loadThoughts(sectionId: string): Promise<Thought[]> {
-    if (IS_GITHUB_PAGES) {
-      try {
-        const response = await fetch(`${API_URL}/static.json`);
-        if (!response.ok) {
-          throw new Error('Failed to load thoughts');
-        }
-        const data = await response.json();
-        return (data.thoughts[sectionId] || []).map((thought: any) => ({
-          ...thought,
-          createdAt: new Date(thought.createdAt),
-          updatedAt: thought.updatedAt ? new Date(thought.updatedAt) : undefined,
-        }));
-      } catch (error) {
-        console.error('Error loading thoughts:', error);
-        return [];
-      }
-    }
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('thoughts')
-          .select('*')
-          .eq('section_id', sectionId)
-          .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          return data.map(thought => ({
-            ...thought,
-            sectionId: thought.section_id,
-            createdAt: new Date(thought.created_at),
-            updatedAt: thought.updated_at ? new Date(thought.updated_at) : undefined,
-          }));
-        }
-        console.warn('Supabase load failed, falling back to local storage:', error);
-      } catch (error) {
-        console.warn('Supabase load failed, falling back to local storage:', error);
-      }
-    }
-
-    // Local API fallback
     try {
       const response = await fetch(`${API_URL}/thoughts/${sectionId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load thoughts');
-      }
-
-      const thoughts = await response.json();
-      return thoughts.map((thought: any) => ({
-        ...thought,
-        createdAt: new Date(thought.createdAt),
-        updatedAt: thought.updatedAt ? new Date(thought.updatedAt) : undefined,
-      }));
+      if (!response.ok) throw new Error('Failed to load thoughts');
+      return await response.json();
     } catch (error) {
       console.error('Error loading thoughts:', error);
       return [];
     }
   },
 
-  async saveSections(sections: Section[]): Promise<void> {
-    if (IS_GITHUB_PAGES) {
-      console.warn('Saving is not supported in GitHub Pages mode');
-      return;
-    }
-
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from('sections')
-          .upsert(
-            sections.map(section => ({
-              ...section,
-              created_at: section.createdAt,
-              updated_at: section.updatedAt,
-              workflow_steps: section.workflowSteps,
-            })),
-            { onConflict: 'id' }
-          );
-        
-        if (!error) return;
-        console.warn('Supabase save failed, falling back to local storage:', error);
-      } catch (error) {
-        console.warn('Supabase save failed, falling back to local storage:', error);
-      }
-    }
-
-    // Local API fallback
+  async saveSections(sections: Section[]) {
     try {
       const response = await fetch(`${API_URL}/sections`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sections),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save sections');
-      }
+      if (!response.ok) throw new Error('Failed to save sections');
     } catch (error) {
       console.error('Error saving sections:', error);
-      throw new Error('Failed to save sections');
+      throw error;
     }
   },
 
   async loadSections(): Promise<Section[]> {
-    if (IS_GITHUB_PAGES) {
-      try {
-        const response = await fetch(`${API_URL}/static.json`);
-        if (!response.ok) {
-          throw new Error('Failed to load sections');
-        }
-        const data = await response.json();
-        return (data.sections || []).map((section: any) => ({
-          ...section,
-          createdAt: new Date(section.createdAt),
-          updatedAt: new Date(section.updatedAt),
-        }));
-      } catch (error) {
-        console.error('Error loading sections:', error);
-        return [];
-      }
-    }
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('sections')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          return data.map(section => ({
-            ...section,
-            workflowSteps: section.workflow_steps,
-            createdAt: new Date(section.created_at),
-            updatedAt: new Date(section.updated_at),
-          }));
-        }
-        console.warn('Supabase load failed, falling back to local storage:', error);
-      } catch (error) {
-        console.warn('Supabase load failed, falling back to local storage:', error);
-      }
-    }
-
-    // Local API fallback
     try {
       const response = await fetch(`${API_URL}/sections`);
-      if (!response.ok) {
-        throw new Error('Failed to load sections');
-      }
-
-      const sections = await response.json();
-      return sections.map((section: any) => ({
-        ...section,
-        createdAt: new Date(section.createdAt),
-        updatedAt: new Date(section.updatedAt),
-      }));
+      if (!response.ok) throw new Error('Failed to load sections');
+      return await response.json();
     } catch (error) {
       console.error('Error loading sections:', error);
       return [];
