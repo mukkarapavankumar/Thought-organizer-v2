@@ -1,25 +1,28 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: process.env.GITHUB_PAGES 
-    ? '/Thought-organizer-v2/' // Replace with your repository name
-    : '/',
+  base: './',
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
+    assetsDir: '.',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: undefined,
-        entryFileNames: 'assets/[name].[hash].js',
-        chunkFileNames: 'assets/[name].[hash].js',
-        assetFileNames: 'assets/[name].[hash].[ext]'
-      },
-    },
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }
   },
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
+  define: {
+    // Remove environment variables from the build
+    'process.env.VITE_OPENAI_API_KEY': '""',
+    'process.env.VITE_PERPLEXITY_API_KEY': '""',
+    'import.meta.env.VITE_OPENAI_API_KEY': '""',
+    'import.meta.env.VITE_PERPLEXITY_API_KEY': '""'
+  }
 });

@@ -3,10 +3,26 @@ import { ThoughtAnalysis } from '../../types/thought';
 import { AIProvider } from './config';
 import { checkOllamaHealth, generateOllamaCompletion, listOllamaModels } from './ollama';
 
-// Default to Ollama, switch to OpenAI if API key is available
-const hasOpenAIKey = Boolean(import.meta.env.VITE_OPENAI_API_KEY);
-let currentProvider: AIProvider = hasOpenAIKey ? 'openai' : 'ollama';
-let ollamaModel = 'llama3.2:1b';  // Default model
+interface ApiKeys {
+  openAiKey: string;
+  perplexityKey: string;
+}
+
+// Function to get API keys from server
+async function getApiKeys(): Promise<ApiKeys> {
+  try {
+    const response = await fetch('http://localhost:3001/api/keys');
+    const keys = await response.json();
+    return keys;
+  } catch (error) {
+    console.error('Failed to load API keys:', error);
+    return { openAiKey: '', perplexityKey: '' };
+  }
+}
+
+// Default to Ollama
+let currentProvider: AIProvider = 'ollama';
+let ollamaModel = 'llama3.2:1b';  // Restore original model
 
 export function getCurrentProvider(): AIProvider {
   return currentProvider;
@@ -17,8 +33,9 @@ export function setOllamaModel(model: string) {
 }
 
 export async function initializeAI(provider: AIProvider) {
+  const keys = await getApiKeys();
   // Only allow switching to OpenAI if API key is available
-  if (provider === 'openai' && !hasOpenAIKey) {
+  if (provider === 'openai' && !keys.openAiKey) {
     console.warn('OpenAI API key not configured. Defaulting to Ollama.');
     currentProvider = 'ollama';
   } else {
@@ -30,7 +47,7 @@ export async function initializeAI(provider: AIProvider) {
     const isOllamaRunning = await checkOllamaHealth();
     if (!isOllamaRunning) {
       console.error('Ollama is not running. Please start the Ollama server.');
-      if (hasOpenAIKey) {
+      if (keys.openAiKey) {
         console.warn('Falling back to OpenAI...');
         currentProvider = 'openai';
       }
@@ -76,12 +93,15 @@ export async function analyzeThoughtWithWorkflow(
       console.error(`Error in workflow step "${step.name}":`, error);
       steps.push({
         stepId: step.id,
-        content: 'Failed to generate analysis. Please try again.',
+        content: 'Failed to generate analysis. Please check your API keys and try again.',
       });
     }
   }
 
-  return { steps };
+  return { 
+    steps,
+    status: 'completed'
+  };
 }
 
 export async function generateCompletion(prompt: string, modelOverride?: string): Promise<string> {
@@ -125,13 +145,16 @@ export async function generateCompletion(prompt: string, modelOverride?: string)
   } catch (error) {
     console.error(`Error with ${currentProvider}:`, error);
     
-    if (currentProvider === 'ollama' && hasOpenAIKey) {
-      console.log('Falling back to OpenAI...');
-      try {
-        return await generateOpenAICompletion(prompt);
-      } catch (fallbackError) {
-        console.error('OpenAI fallback failed:', fallbackError);
-        throw fallbackError;
+    if (currentProvider === 'ollama') {
+      const keys = await getApiKeys();
+      if (keys.openAiKey) {
+        console.log('Falling back to OpenAI...');
+        try {
+          return await generateOpenAICompletion(prompt);
+        } catch (fallbackError) {
+          console.error('OpenAI fallback failed:', fallbackError);
+          throw fallbackError;
+        }
       }
     }
     
@@ -140,8 +163,9 @@ export async function generateCompletion(prompt: string, modelOverride?: string)
 }
 
 async function generateOpenAICompletion(prompt: string, modelOverride?: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) {
+  const keys = await getApiKeys();
+  const apiKey = keys.openAiKey;
+  if (!keys.openAiKey) {
     throw new Error('OpenAI API key is not configured');
   }
 
@@ -177,8 +201,9 @@ async function generateOpenAICompletion(prompt: string, modelOverride?: string):
 }
 
 async function generatePerplexityCompletion(prompt: string, modelOverride?: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_PERPLEXITY_API_KEY;
-  if (!apiKey) {
+  const keys = await getApiKeys();
+  const apiKey = keys.perplexityKey;
+  if (!keys.perplexityKey) {
     throw new Error('Perplexity API key is not configured');
   }
 

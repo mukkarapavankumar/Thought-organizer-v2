@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useThoughtStore } from '../store/useThoughtStore';
 import { WorkflowStep } from '../types/section';
-import { ThoughtAnalysis } from '../types/thought';
+import { ThoughtAnalysis, WorkflowResponse } from '../types/thought';
 import ReactMarkdown from 'react-markdown';
 import { CopyOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { message } from 'antd';
@@ -30,8 +30,8 @@ export function AnalysisPanel({
   );
 
   const currentStep = workflow?.find((step) => step.id === activeStepId);
-  const currentResponse = aiResponse?.steps.find(
-    (step) => step.stepId === activeStepId
+  const currentResponse = aiResponse?.steps?.find(
+    (step: WorkflowResponse) => step.stepId === activeStepId
   );
 
   const copyToClipboard = async (text: string) => {
@@ -147,7 +147,13 @@ export function AnalysisPanel({
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">Analysis in progress...</p>
+                <p className="text-gray-500">
+                  {aiResponse?.status === 'pending' 
+                    ? 'Analysis in progress...'
+                    : aiResponse?.status === 'error'
+                    ? aiResponse.error || 'An error occurred during analysis'
+                    : 'Waiting to start analysis...'}
+                </p>
               </div>
             )}
           </div>

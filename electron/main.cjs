@@ -52,10 +52,22 @@ function createWindow() {
 
   // In production, load the bundled app
   if (app.isPackaged) {
-    const indexPath = path.join(app.getAppPath(), 'dist', 'index.html');
+    const indexPath = path.join(__dirname, '../dist/index.html');
     log(`Loading index from: ${indexPath}`);
+    // Set the base directory for loading resources
     mainWindow.loadFile(indexPath).catch(err => {
       log(`Error loading index: ${err.message}`);
+      mainWindow.webContents.openDevTools();
+    });
+
+    // Log the contents of the dist directory
+    const distPath = path.join(__dirname, '../dist');
+    fs.readdir(distPath, (err, files) => {
+      if (err) {
+        log(`Error reading dist directory: ${err.message}`);
+      } else {
+        log(`Contents of dist directory: ${files.join(', ')}`);
+      }
     });
   } else {
     // In development, load from the dev server

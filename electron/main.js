@@ -2,9 +2,46 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit();
+// Handle Windows installation events
+if (process.platform === 'win32') {
+  const squirrelCommand = process.argv[1];
+  if (squirrelCommand) {
+    const appFolder = path.resolve(process.execPath, '..');
+    const rootAtomFolder = path.resolve(appFolder, '..');
+    const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
+    const exeName = path.basename(process.execPath);
+
+    const spawn = function(command, args) {
+      let spawnedProcess;
+      try {
+        spawnedProcess = require('child_process').spawn(command, args, { detached: true });
+      } catch(error) {
+        console.error(error);
+      }
+      return spawnedProcess;
+    };
+
+    const spawnUpdate = function(args) {
+      return spawn(updateDotExe, args);
+    };
+
+    switch (squirrelCommand) {
+      case '--squirrel-install':
+      case '--squirrel-updated':
+        // Install desktop and start menu shortcuts
+        spawnUpdate(['--createShortcut', exeName]);
+        setTimeout(app.quit, 1000);
+        return true;
+      case '--squirrel-uninstall':
+        // Remove desktop and start menu shortcuts
+        spawnUpdate(['--removeShortcut', exeName]);
+        setTimeout(app.quit, 1000);
+        return true;
+      case '--squirrel-obsolete':
+        app.quit();
+        return true;
+    }
+  }
 }
 
 let mainWindow;

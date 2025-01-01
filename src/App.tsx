@@ -11,6 +11,7 @@ import { useThoughtStore } from './store/useThoughtStore';
 import { useSectionStore } from './store/useSectionStore';
 import { Select, Input, Button } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
+import { ApiKeyManager } from './components/ApiKeyManager';
 
 function App() {
   const [provider, setProvider] = useState<AIProvider>(getCurrentProvider());
@@ -81,27 +82,32 @@ function App() {
                 </Select.Option>
               ))}
             </Select>
-            <Select
-              value={selectedOllamaModel}
-              onChange={(value) => {
-                setSelectedOllamaModel(value);
-                setOllamaModel(value);
-              }}
-              className="w-[150px]"
-              loading={isLoadingModels}
-            >
-              {ollamaModels.map((model) => (
-                <Select.Option key={model} value={model}>
-                  {model}
-                </Select.Option>
-              ))}
-            </Select>
+            {provider === 'ollama' && (
+              <Select
+                value={selectedOllamaModel}
+                onChange={(value) => {
+                  setSelectedOllamaModel(value);
+                  setOllamaModel(value);
+                }}
+                className="w-[150px]"
+                loading={isLoadingModels}
+              >
+                {ollamaModels.map((model) => (
+                  <Select.Option key={model} value={model}>
+                    {model}
+                  </Select.Option>
+                ))}
+              </Select>
+            )}
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-[300px] border-r bg-gray-50">
+          <div className="w-[300px] border-r bg-gray-50 flex flex-col">
             <SectionList />
+            <div className="mt-auto px-4 pb-4">
+              <ApiKeyManager />
+            </div>
           </div>
 
           <div className="flex flex-1 overflow-hidden">
@@ -132,6 +138,7 @@ function App() {
           </div>
         </div>
       </div>
+      <ApiKeyManager />
     </div>
   );
 }

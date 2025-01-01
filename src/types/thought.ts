@@ -15,23 +15,24 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export interface Thought {
-  id: string;
+export interface WorkflowResponse {
+  stepId: string;
   content: string;
-  createdAt: Date;
-  updatedAt?: Date;
-  sectionId: string;
-  status: 'pending' | 'analyzing' | 'completed' | 'error';
-  aiAnalysis?: ThoughtAnalysis;
-  ranking?: number;
-  chatHistory?: ChatMessage[];
 }
 
 export interface ThoughtAnalysis {
-  steps: {
-    stepId: string;
-    content: string;
-  }[];
+  steps: WorkflowResponse[];
+  status: 'pending' | 'completed' | 'error';
+  error?: string;
+}
+
+export interface Thought {
+  id: string;
+  content: string;
+  sectionId: string;
+  aiAnalysis: ThoughtAnalysis | null;
+  createdAt: number;
+  status: 'pending' | 'completed' | 'error';
 }
 
 export interface ThoughtCluster {

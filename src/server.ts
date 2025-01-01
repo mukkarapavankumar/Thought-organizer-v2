@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Thought } from './types/thought';
 import { Section } from './types/section';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,6 +17,7 @@ const DATA_DIR = process.env.NODE_ENV === 'production'
   ? join(dirname(__dirname), 'public', 'data')
   : join(dirname(__dirname), 'data');
 const STORAGE_PREFIX = 'thought-organizer';
+const KEYS_FILE = join(DATA_DIR, 'keys.json');
 
 app.use(cors());
 app.use(express.json());
@@ -48,6 +50,69 @@ async function readJsonFile(filename: string) {
     throw error;
   }
 }
+
+// API Keys endpoints
+app.get('/api/keys', async (req, res) => {
+  try {
+    await ensureDataDir();
+    const keys = await fs.readFile(KEYS_FILE, 'utf8').catch(() => '{}');
+    res.json(JSON.parse(keys));
+  } catch (error) {
+    console.error('Error reading API keys:', error);
+    res.json({ openAiKey: '', perplexityKey: '' });
+  }
+});
+
+app.post('/api/keys', async (req, res) => {
+  try {
+    await ensureDataDir();
+    await fs.writeFile(KEYS_FILE, JSON.stringify(req.body));
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving API keys:', error);
+    res.status(500).json({ error: 'Failed to save API keys' });
+  }
+});
+
+// OpenAI proxy endpoint
+app.post('/api/openai', async (req, res) => {
+  try {
+    const keys = JSON.parse(await fs.readFile(KEYS_FILE, 'utf8'));
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keys.openAiKey}`,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    console.error('OpenAI API error:', error);
+    res.status(500).json({ error: error.message || 'Unknown error occurred' });
+  }
+});
+
+// Perplexity proxy endpoint
+app.post('/api/perplexity', async (req, res) => {
+  try {
+    const keys = JSON.parse(await fs.readFile(KEYS_FILE, 'utf8'));
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keys.perplexityKey}`,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    console.error('Perplexity API error:', error);
+    res.status(500).json({ error: error.message || 'Unknown error occurred' });
+  }
+});
 
 // Thoughts endpoints
 app.post('/api/thoughts/:sectionId', async (req: Request<{ sectionId: string }, any, Thought[]>, res: Response) => {

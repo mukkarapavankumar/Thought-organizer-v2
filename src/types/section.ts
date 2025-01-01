@@ -2,18 +2,15 @@ export interface WorkflowStep {
   id: string;
   name: string;
   prompt: string;
-  order: number;
   contextSteps: string[];
   model?: string;
+  order: number;
 }
 
 export interface Section {
   id: string;
   name: string;
   workflow: WorkflowStep[];
-  workflowSteps: string[];
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface SectionFormData {
