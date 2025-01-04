@@ -14,9 +14,6 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-env:
-  NODE_ENV: production
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,18 +32,23 @@ jobs:
       - name: Install dependencies
         run: |
           cd website/thought_organizer_website
-          rm -f package-lock.json
+          npm install -g postcss postcss-cli autoprefixer tailwindcss
           npm install
-          npm install -D autoprefixer@10.4.16 postcss@8.4.32 tailwindcss@3.3.0
-          rm -f postcss.config.js
-          rm -f postcss.config.mjs
+          npm install --save-dev postcss@8.4.32 autoprefixer@10.4.16 tailwindcss@3.3.0
+        
+      - name: Create PostCSS config
+        run: |
+          cd website/thought_organizer_website
+          echo "module.exports = { plugins: [ require('tailwindcss'), require('autoprefixer') ] }" > postcss.config.js
         
       - name: Build with Next.js
         run: |
           cd website/thought_organizer_website
-          NODE_ENV=production npm run build
+          npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          NODE_ENV: production
+          CI: false
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
