@@ -32,14 +32,12 @@ jobs:
       - name: Install dependencies
         run: |
           cd website/thought_organizer_website
-          npm install -g postcss postcss-cli autoprefixer tailwindcss
           npm install
-          npm install --save-dev postcss@8.4.32 autoprefixer@10.4.16 tailwindcss@3.3.0
         
       - name: Create PostCSS config
         run: |
           cd website/thought_organizer_website
-          echo "module.exports = { plugins: [ require('tailwindcss'), require('autoprefixer') ] }" > postcss.config.js
+          echo "module.exports = { plugins: { 'tailwindcss': {}, 'autoprefixer': {} } }" > postcss.config.js
         
       - name: Build with Next.js
         run: |
