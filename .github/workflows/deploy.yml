@@ -37,15 +37,15 @@ jobs:
           cd website/thought_organizer_website
           rm -f package-lock.json
           npm install
+          npm install -D autoprefixer@10.4.16 postcss@8.4.32 tailwindcss@3.3.0
           rm -f postcss.config.js
           rm -f postcss.config.mjs
         
       - name: Build with Next.js
         run: |
           cd website/thought_organizer_website
-          npm run build
+          NODE_ENV=production npm run build
         env:
-          NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
         
       - name: Upload artifact
