@@ -45,10 +45,10 @@ export function PainPoints() {
               viewport={{ once: true }}
             >
               <point.icon className="w-16 h-16 text-blue-600" />
-              <h2 className="text-3xl font-bold">
+              <h2 className="text-2xl font-bold">
                 {point.question}
               </h2>
-              <p className="text-2xl text-blue-600 font-medium">
+              <p className="text-xl text-blue-600 font-medium">
                 {point.solution}
               </p>
             </motion.div>
@@ -72,7 +72,7 @@ export function PainPoints() {
           </p>
           <Button size="lg" className="text-2xl mt-10 px-8 py-6" asChild>
             <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
-              <WindowsIcon className="h-12 w-12" />
+              <WindowsIcon className="h-8 w-8" />
               Start Organizing Your Thoughts
             </Link>
           </Button>

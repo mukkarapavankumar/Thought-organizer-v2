@@ -35,7 +35,7 @@ export function NavHeader() {
           <div className="flex items-center gap-8">
             <Button variant="default" size="lg" className="text-lg font-medium" asChild>
               <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
-                <WindowsIcon className="h-8 w-8" />
+                <WindowsIcon className="h-6 w-6" />
                 Download Now
               </Link>
             </Button>
