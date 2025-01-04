@@ -5,7 +5,9 @@ export const BASE_PATH = process.env.NODE_ENV === 'production' ? '/Thought-organ
 export const DOWNLOAD_URL = 'https://drive.google.com/uc?export=download&id=1pShvs7fkXgDw1NZBeo8TVj_wn4IGL8pe'
 
 // Download page path (used in navigation)
-export const DOWNLOAD_PAGE = '/download'
+export const DOWNLOAD_PAGE = process.env.NODE_ENV === 'production' 
+  ? '/Thought-organizer-v2/download/'
+  : '/download/'
 
 // Full download page URL (handles both local and production)
 export const getDownloadPageUrl = () => {

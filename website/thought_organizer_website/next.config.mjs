@@ -6,7 +6,16 @@ const nextConfig = {
     unoptimized: true,
   },
   // Ensure trailing slashes for consistent routing
-  trailingSlash: true
+  trailingSlash: true,
+  // Configure static routes
+  rewrites: async () => {
+    return [
+      {
+        source: '/download',
+        destination: '/download/index.html',
+      },
+    ]
+  }
 }
 
 export default nextConfig
