@@ -37,7 +37,8 @@ jobs:
       - name: Install dependencies
         run: |
           cd website/thought_organizer_website
-          npm ci
+          rm -f package-lock.json
+          npm install
         
       - name: Build with Next.js
         run: |
