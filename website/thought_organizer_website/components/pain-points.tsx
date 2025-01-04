@@ -5,7 +5,7 @@ import { Bot, Lock, MessageSquare, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { WindowsIcon } from '@/components/icons'
-import { getDownloadPageUrl } from '@/lib/constants'
+import { DOWNLOAD_URL } from '@/lib/constants'
 
 const painPoints = [
   {
@@ -71,7 +71,7 @@ export function PainPoints() {
             defined workflows, and AI that follows your rules.
           </p>
           <Button size="lg" className="text-lg mt-8 px-6 py-4" asChild>
-            <Link href={getDownloadPageUrl()} className="flex items-center gap-2">
+            <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-2">
               <WindowsIcon className="h-6 w-6" />
               Start Organizing Your Thoughts
             </Link>
