@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { LightbulbIcon as BulbOutlined } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WindowsIcon } from '@/components/icons'
-import { BASE_PATH, DOWNLOAD_URL } from '@/lib/constants'
+import { BASE_PATH, getDownloadPageUrl } from '@/lib/constants'
 
 export function NavHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -34,7 +34,7 @@ export function NavHeader() {
           </Link>
           <div className="flex items-center gap-6">
             <Button variant="default" size="default" className="text-base font-medium" asChild>
-              <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-2">
+              <Link href={getDownloadPageUrl()} className="flex items-center gap-2">
                 <WindowsIcon className="h-5 w-5" />
                 Download Now
               </Link>
