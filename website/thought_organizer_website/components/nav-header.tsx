@@ -24,13 +24,15 @@ export function NavHeader() {
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="container mx-auto px-4 py-4">
-        <nav className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <BulbOutlined className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold">Thought Organizer</span>
+      <div className="px-4 md:px-8 lg:px-12 xl:px-16 2xl:px-24 py-6 w-full">
+        <nav className="flex items-center justify-between w-full max-w-[2000px] mx-auto">
+          <Link href="/" className="flex items-center space-x-3">
+            <BulbOutlined className="h-10 w-10 text-blue-600" />
+            <span className="text-2xl font-bold">Thought Organizer</span>
           </Link>
-          <Button variant="default">Download Now</Button>
+          <div className="flex items-center gap-8">
+            <Button variant="default" size="lg" className="text-lg font-medium">Download Now</Button>
+          </div>
         </nav>
       </div>
     </motion.header>

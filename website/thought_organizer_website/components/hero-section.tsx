@@ -14,8 +14,8 @@ const workflowSteps = [
 export function HeroSection() {
   return (
     <section className="pt-32 pb-16 md:pt-40 md:pb-20">
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-4xl mx-auto">
+      <div className="container">
+        <div className="text-center">
           <motion.h1
             className="text-4xl md:text-6xl font-bold tracking-tight"
             initial={{ opacity: 0, y: 20 }}
@@ -51,7 +51,7 @@ export function HeroSection() {
         </div>
 
         <motion.div
-          className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
+          className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}

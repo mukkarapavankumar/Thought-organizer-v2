@@ -26,9 +26,9 @@ const workflowSteps = [
 export function WorkflowDemo() {
   return (
     <section className="py-20 bg-blue-50">
-      <div className="container mx-auto px-4">
+      <div className="container">
         <motion.div
-          className="text-center max-w-3xl mx-auto mb-16"
+          className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -42,7 +42,7 @@ export function WorkflowDemo() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {workflowSteps.map((step, index) => (
             <motion.div
               key={index}
