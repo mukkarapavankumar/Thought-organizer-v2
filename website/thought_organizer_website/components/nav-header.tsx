@@ -26,16 +26,16 @@ export function NavHeader() {
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="px-4 md:px-8 lg:px-12 xl:px-16 2xl:px-24 py-6 w-full">
+      <div className="px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 w-full">
         <nav className="flex items-center justify-between w-full max-w-[2000px] mx-auto">
-          <Link href={BASE_PATH} className="flex items-center space-x-3">
-            <BulbOutlined className="h-10 w-10 text-blue-600" />
-            <span className="text-2xl font-bold">Thought Organizer</span>
+          <Link href={BASE_PATH} className="flex items-center space-x-2">
+            <BulbOutlined className="h-8 w-8 text-blue-600" />
+            <span className="text-xl font-bold">Thought Organizer</span>
           </Link>
-          <div className="flex items-center gap-8">
-            <Button variant="default" size="lg" className="text-lg font-medium" asChild>
-              <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
-                <WindowsIcon className="h-6 w-6" />
+          <div className="flex items-center gap-6">
+            <Button variant="default" size="default" className="text-base font-medium" asChild>
+              <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-2">
+                <WindowsIcon className="h-5 w-5" />
                 Download Now
               </Link>
             </Button>

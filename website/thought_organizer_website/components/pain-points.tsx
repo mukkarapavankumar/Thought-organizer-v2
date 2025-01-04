@@ -34,21 +34,21 @@ export function PainPoints() {
   return (
     <section className="min-h-screen flex flex-col justify-center bg-gradient-to-b from-gray-50 to-white">
       <div className="container py-6">
-        <div className="grid md:grid-cols-2 gap-20 mb-32">
+        <div className="grid md:grid-cols-2 gap-16 mb-24">
           {painPoints.map((point, index) => (
             <motion.div
               key={index}
-              className="flex flex-col items-center text-center space-y-6"
+              className="flex flex-col items-center text-center space-y-4"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <point.icon className="w-16 h-16 text-blue-600" />
-              <h2 className="text-2xl font-bold">
+              <point.icon className="w-12 h-12 text-blue-600" />
+              <h2 className="text-xl font-bold">
                 {point.question}
               </h2>
-              <p className="text-xl text-blue-600 font-medium">
+              <p className="text-lg text-blue-600 font-medium">
                 {point.solution}
               </p>
             </motion.div>
@@ -62,17 +62,17 @@ export function PainPoints() {
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-6xl md:text-6xl font-bold tracking-tight">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
             The Answer to All These:{' '}
             <span className="text-blue-600">Thought Organizer</span>
           </h2>
-          <p className="mt-6 text-3xl text-gray-600 max-w-3xl mx-auto">
+          <p className="mt-4 text-xl text-gray-600 max-w-2xl mx-auto">
             Take control of your thoughts and ideas with customizable sections,
             defined workflows, and AI that follows your rules.
           </p>
-          <Button size="lg" className="text-2xl mt-10 px-8 py-6" asChild>
-            <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
-              <WindowsIcon className="h-8 w-8" />
+          <Button size="lg" className="text-lg mt-8 px-6 py-4" asChild>
+            <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-2">
+              <WindowsIcon className="h-6 w-6" />
               Start Organizing Your Thoughts
             </Link>
           </Button>
