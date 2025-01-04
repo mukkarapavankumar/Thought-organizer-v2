@@ -5,6 +5,7 @@ import { Bot, Lock, MessageSquare, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { WindowsIcon } from '@/components/icons'
+import { DOWNLOAD_URL } from '@/lib/constants'
 
 const painPoints = [
   {
@@ -70,7 +71,7 @@ export function PainPoints() {
             defined workflows, and AI that follows your rules.
           </p>
           <Button size="lg" className="text-2xl mt-10 px-8 py-6" asChild>
-            <Link href="https://drive.google.com/file/d/1pShvs7fkXgDw1NZBeo8TVj_wn4IGL8pe/view?usp=sharing" target="_blank" className="flex items-center gap-3">
+            <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
               <WindowsIcon className="h-12 w-12" />
               Start Organizing Your Thoughts
             </Link>

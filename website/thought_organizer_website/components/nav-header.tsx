@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { LightbulbIcon as BulbOutlined } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WindowsIcon } from '@/components/icons'
+import { BASE_PATH, DOWNLOAD_URL } from '@/lib/constants'
 
 export function NavHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -27,13 +28,13 @@ export function NavHeader() {
     >
       <div className="px-4 md:px-8 lg:px-12 xl:px-16 2xl:px-24 py-6 w-full">
         <nav className="flex items-center justify-between w-full max-w-[2000px] mx-auto">
-          <Link href="/" className="flex items-center space-x-3">
+          <Link href={BASE_PATH} className="flex items-center space-x-3">
             <BulbOutlined className="h-10 w-10 text-blue-600" />
             <span className="text-2xl font-bold">Thought Organizer</span>
           </Link>
           <div className="flex items-center gap-8">
             <Button variant="default" size="lg" className="text-lg font-medium" asChild>
-              <Link href="https://drive.google.com/file/d/1pShvs7fkXgDw1NZBeo8TVj_wn4IGL8pe/view?usp=sharing" target="_blank" className="flex items-center gap-3">
+              <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-3">
                 <WindowsIcon className="h-8 w-8" />
                 Download Now
               </Link>
