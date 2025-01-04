@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { LightbulbIcon as BulbOutlined } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { WindowsIcon } from '@/components/icons'
 
 export function NavHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -31,7 +32,12 @@ export function NavHeader() {
             <span className="text-2xl font-bold">Thought Organizer</span>
           </Link>
           <div className="flex items-center gap-8">
-            <Button variant="default" size="lg" className="text-lg font-medium">Download Now</Button>
+            <Button variant="default" size="lg" className="text-lg font-medium" asChild>
+              <Link href="https://drive.google.com/file/d/1pShvs7fkXgDw1NZBeo8TVj_wn4IGL8pe/view?usp=sharing" target="_blank" className="flex items-center gap-3">
+                <WindowsIcon className="h-8 w-8" />
+                Download Now
+              </Link>
+            </Button>
           </div>
         </nav>
       </div>
