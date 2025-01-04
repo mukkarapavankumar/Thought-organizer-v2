@@ -14,6 +14,9 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  NODE_ENV: production
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,10 +35,16 @@ jobs:
         uses: actions/configure-pages@v4
         
       - name: Install dependencies
-        run: cd website/thought_organizer_website && npm ci
+        run: |
+          cd website/thought_organizer_website
+          npm ci
         
       - name: Build with Next.js
-        run: cd website/thought_organizer_website && npm run build
+        run: |
+          cd website/thought_organizer_website
+          npm run build
+        env:
+          NODE_ENV: production
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
