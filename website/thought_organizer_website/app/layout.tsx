@@ -7,6 +7,19 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Thought Organizer",
   description: "Take control of your thoughts and ideas with AI that follows your rules.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.ico",
+        sizes: "any",
+      },
+      {
+        url: "/icon.svg",
+        type: "image/svg+xml",
+      }
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "Thought Organizer",
     description: "Take control of your thoughts and ideas with AI that follows your rules.",
@@ -26,6 +39,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="favicon.ico" sizes="any" />
+      </head>
       <body className={inter.className}>{children}</body>
     </html>
   );
