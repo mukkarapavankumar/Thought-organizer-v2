@@ -28,6 +28,34 @@ function createServer(userDataPath, log) {
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
   }
 
+  // Check Ollama status
+  server.get('/api/ollama/status', async (req, res) => {
+    try {
+      const response = await fetch('http://localhost:11434/api/tags');
+      res.json({ isRunning: response.ok });
+    } catch (error) {
+      log(`Error checking Ollama status: ${error.message}`);
+      res.json({ isRunning: false });
+    }
+  });
+
+  // DuckDuckGo search endpoint
+  server.get('/api/search', async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ error: 'Query parameter is required' });
+      }
+
+      const response = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`);
+      const html = await response.text();
+      res.send(html);
+    } catch (error) {
+      log(`Search error: ${error.message}`);
+      res.status(500).json({ error: 'Failed to perform search' });
+    }
+  });
+
   // API Keys endpoints
   server.get('/api/keys', async (req, res) => {
     try {
