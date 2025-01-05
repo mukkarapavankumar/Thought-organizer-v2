@@ -5,6 +5,7 @@ export interface WorkflowStep {
   contextSteps: string[];
   model?: string;
   order: number;
+  useWebSearch?: boolean;
 }
 
 export interface Section {
@@ -51,6 +52,7 @@ export const DEFAULT_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         prompt: 'Enhance and expand upon this thought:',
         order: 0,
         contextSteps: [],
+        useWebSearch: false,
       },
       {
         id: 'step2',
@@ -58,6 +60,7 @@ export const DEFAULT_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         prompt: 'Provide a market analysis for this concept:',
         order: 1,
         contextSteps: ['step1'],
+        useWebSearch: true,
       },
       {
         id: 'step3',
@@ -65,6 +68,7 @@ export const DEFAULT_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         prompt: 'Develop a business case for this idea:',
         order: 2,
         contextSteps: ['step1', 'step2'],
+        useWebSearch: true,
       }
     ]
   },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Settings, Trash2, X } from 'lucide-react';
+import { Plus, Settings, Trash2, X, Globe } from 'lucide-react';
 import { useSectionStore } from '../store/useSectionStore';
 import { WorkflowStep } from '../types/section';
 import { listOllamaModels } from '../services/ai/ollama';
@@ -96,6 +96,14 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
       : [...contextSteps, contextStepId];
     
     updateStep(stepIndex, 'contextSteps', newContextSteps);
+  };
+
+  const toggleWebSearch = (index: number) => {
+    setSteps(
+      steps.map((step, i) =>
+        i === index ? { ...step, useWebSearch: !step.useWebSearch } : step
+      )
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,6 +254,19 @@ function SectionModal({ onClose, initialData }: SectionModalProps) {
                       >
                         {renderModelOptions()}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={step.useWebSearch || false}
+                          onChange={() => toggleWebSearch(index)}
+                          className="rounded border-gray-300"
+                        />
+                        <Globe className="w-4 h-4 text-gray-600" />
+                        <span>Enable web search for this step</span>
+                      </label>
                     </div>
 
                     {index > 0 && (

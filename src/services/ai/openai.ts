@@ -2,6 +2,7 @@ import { WorkflowStep } from '../../types/section';
 import { ThoughtAnalysis } from '../../types/thought';
 import { AIProvider } from './config';
 import { checkOllamaHealth, generateOllamaCompletion, listOllamaModels } from './ollama';
+import { searchDuckDuckGo } from './search';
 
 interface ApiKeys {
   openAiKey: string;
@@ -76,6 +77,19 @@ export async function analyzeThoughtWithWorkflow(
           return '';
         })
         .join('');
+    }
+
+    // Add web search results if enabled
+    let searchResults = '';
+    if (step.useWebSearch) {
+      try {
+        searchResults = await searchDuckDuckGo(content);
+        if (searchResults) {
+          contextText += `\nWeb Search Context:\n${searchResults}\n\n`;
+        }
+      } catch (error) {
+        console.error('Error performing web search:', error);
+      }
     }
 
     const prompt = contextText

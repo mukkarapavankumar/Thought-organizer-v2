@@ -3,6 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const squirrelStartup = require('electron-squirrel-startup');
 const createServer = require('./server.cjs');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const fetch = require('node-fetch');
+
+const execAsync = promisify(exec);
 
 // Set up logging
 function log(message) {
@@ -14,6 +19,42 @@ function log(message) {
   const timestamp = new Date().toISOString();
   fs.appendFileSync(logFile, `${timestamp}: ${message}\n`);
   console.log(message);
+}
+
+// Check if Ollama is installed and install if needed
+async function checkAndInstallOllama() {
+  try {
+    // Try to run ollama -v to check if it's installed
+    await execAsync('ollama -v');
+    log('Ollama is already installed');
+  } catch (error) {
+    log('Ollama is not installed. Installing...');
+    try {
+      // Download and install Ollama for Windows
+      const installerUrl = 'https://ollama.ai/download/windows';
+      const installerPath = path.join(app.getPath('temp'), 'ollama-installer.exe');
+      
+      // Download installer
+      const response = await fetch(installerUrl);
+      const buffer = await response.arrayBuffer();
+      fs.writeFileSync(installerPath, Buffer.from(buffer));
+      
+      // Run installer
+      await execAsync(`"${installerPath}" /S`); // Silent install
+      log('Ollama installed successfully');
+      
+      // Clean up installer
+      fs.unlinkSync(installerPath);
+      
+      // Pull the llama2 model
+      log('Pulling llama2 model...');
+      await execAsync('ollama pull llama2:1b');
+      log('Model downloaded successfully');
+    } catch (installError) {
+      log(`Error installing Ollama: ${installError}`);
+      throw new Error('Failed to install Ollama');
+    }
+  }
 }
 
 // Start the server
@@ -106,10 +147,19 @@ ipcMain.handle('get-user-data-path', () => {
   return userDataPath;
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log('App is ready');
-  startServer();
-  createWindow();
+  try {
+    // Check and install Ollama before creating window
+    await checkAndInstallOllama();
+    
+    // Start the server and create window
+    startServer();
+    createWindow();
+  } catch (error) {
+    log(`Error during initialization: ${error}`);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
