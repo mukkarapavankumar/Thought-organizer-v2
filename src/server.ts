@@ -7,6 +7,11 @@ import { dirname, join } from 'path';
 import { Thought } from './types/thought';
 import { Section } from './types/section';
 import fetch from 'node-fetch';
+import { app as electronApp, BrowserWindow, ipcMain } from 'electron';
+import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fsSync from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,6 +24,61 @@ const DATA_DIR = process.env.NODE_ENV === 'production'
 const STORAGE_PREFIX = 'thought-organizer';
 const KEYS_FILE = join(DATA_DIR, 'keys.json');
 
+const execAsync = promisify(exec);
+
+// Electron window creation
+let mainWindow: BrowserWindow | null = null;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  mainWindow.loadURL(`http://localhost:${port}`);
+}
+
+// Check if Ollama is installed and install if needed
+async function checkAndInstallOllama(): Promise<void> {
+  try {
+    // Try to run ollama -v to check if it's installed
+    await execAsync('ollama -v')
+    console.log('Ollama is already installed')
+  } catch (error) {
+    console.log('Ollama is not installed. Installing...')
+    try {
+      // Download and install Ollama for Windows
+      const installerUrl = 'https://ollama.ai/download/windows'
+      const installerPath = path.join(electronApp.getPath('temp'), 'ollama-installer.exe')
+      
+      // Download installer
+      const response = await fetch(installerUrl)
+      const buffer = await response.arrayBuffer()
+      fsSync.writeFileSync(installerPath, Buffer.from(buffer))
+      
+      // Run installer
+      await execAsync(`"${installerPath}" /S`) // Silent install
+      console.log('Ollama installed successfully')
+      
+      // Clean up installer
+      fsSync.unlinkSync(installerPath)
+      
+      // Pull the llama2 model
+      console.log('Pulling llama2 model...')
+      await execAsync('ollama pull llama2:1b')
+      console.log('Model downloaded successfully')
+    } catch (installError) {
+      console.error('Error installing Ollama:', installError)
+      throw new Error('Failed to install Ollama')
+    }
+  }
+}
+
+// Express middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(join(dirname(__dirname), 'dist')));
@@ -171,6 +231,32 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(port, () => {
+// Initialize both Express and Electron
+const server = app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+});
+
+electronApp.whenReady().then(async () => {
+  try {
+    // Check and install Ollama before creating window
+    await checkAndInstallOllama()
+    
+    // Create window and continue with app initialization
+    createWindow()
+  } catch (error) {
+    console.error('Error during initialization:', error)
+    electronApp.quit()
+  }
+});
+
+electronApp.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    electronApp.quit()
+  }
+});
+
+electronApp.on('activate', () => {
+  if (mainWindow === null) {
+    createWindow()
+  }
 }); 
