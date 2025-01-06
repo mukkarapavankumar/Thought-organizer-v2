@@ -32,9 +32,9 @@ const painPoints = [
 
 export function PainPoints() {
   return (
-    <section className="min-h-screen flex flex-col justify-center bg-gradient-to-b from-gray-50 to-white">
-      <div className="container py-6">
-        <div className="grid md:grid-cols-2 gap-16 mb-24">
+    <section className="pt-32 min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
+      <div className="container py-12">
+        <div className="grid md:grid-cols-2 gap-16 mb-16">
           {painPoints.map((point, index) => (
             <motion.div
               key={index}
@@ -70,6 +70,19 @@ export function PainPoints() {
             Take control of your thoughts and ideas with customizable sections,
             defined workflows, and AI that follows your rules.
           </p>
+          
+          <div className="mt-12 mb-12 max-w-4xl mx-auto">
+            <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
+              <iframe
+                src="https://www.youtube.com/embed/AhdWqmkSf-Q"
+                title="Thought Organizer Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute top-0 left-0 w-full h-full"
+              />
+            </div>
+          </div>
+
           <Button size="lg" className="text-lg mt-8 px-6 py-4" asChild>
             <Link href={DOWNLOAD_URL} target="_blank" className="flex items-center gap-2">
               <WindowsIcon className="h-6 w-6" />
