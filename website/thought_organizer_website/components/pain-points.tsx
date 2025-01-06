@@ -74,7 +74,7 @@ export function PainPoints() {
           <div className="mt-12 mb-12 max-w-4xl mx-auto">
             <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
               <iframe
-                src="https://www.youtube.com/embed/AhdWqmkSf-Q"
+                src="https://www.youtube.com/embed/IS_UEG8cT1Q"
                 title="Thought Organizer Demo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
